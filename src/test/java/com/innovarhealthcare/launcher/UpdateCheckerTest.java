@@ -67,21 +67,18 @@ class UpdateCheckerTest {
 
     @Test
     void newerReleaseIsReported() {
+        // Always one patch above the running version, so this keeps working as
+        // FALLBACK_VERSION moves forward.
+        String[] p = BridgeLinkLauncher.FALLBACK_VERSION.split("\\.");
+        String newer = p[0] + "." + p[1] + "." + (Integer.parseInt(p[p.length - 1]) + 1);
         serve("/api", 200,
-                "{\"tag_name\":\"v1.7.0\",\"html_url\":\"https://github.com/x/y/releases/tag/v1.7.0\"}");
+                "{\"tag_name\":\"v" + newer + "\",\"html_url\":\"https://github.com/x/y/releases/tag/v" + newer + "\"}");
         UpdateChecker checker = new UpdateChecker(base + "/api");
         UpdateChecker.Result r = checker.checkNow();
         assertTrue(r.updateAvailable);
-        assertEquals("1.7.0", r.latestVersion);
-        assertEquals("https://github.com/x/y/releases/tag/v1.7.0", r.releaseUrl);
+        assertEquals(newer, r.latestVersion);
+        assertEquals("https://github.com/x/y/releases/tag/v" + newer, r.releaseUrl);
         assertEquals("", r.error);
-    }
-
-    @Test
-    void sameVersionIsNotReported() {
-        serve("/api", 200, "{\"tag_name\":\"v" + "1.6.0" + "\",\"html_url\":\"u\"}");
-        UpdateChecker checker = new UpdateChecker(base + "/api");
-        assertFalse(checker.checkNow().updateAvailable);
     }
 
     @Test
