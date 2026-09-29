@@ -6,7 +6,7 @@
 
     <groupId>com.innovarhealthcare</groupId>
     <artifactId>bridge-link-launcher</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.1</version>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -80,6 +80,19 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <!-- Signed dependencies (e.g. java-keyring) must not keep
+                                 their signature files: the merged manifest no longer
+                                 matches and the JVM refuses to load classes from the jar. -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>com.innovarhealthcare.launcher.Main</mainClass>

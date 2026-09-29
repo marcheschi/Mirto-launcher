@@ -70,7 +70,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
     private static final boolean DEVELOP = false;
     // Keep in sync with the <version> in pom.xml; when running from a packaged
     // jar the manifest value wins (see resolveVersion()).
-    private static final String FALLBACK_VERSION = "1.6.0";
+    private static final String FALLBACK_VERSION = "1.6.1";
     private static final String VERSION = DEVELOP ? "Development " + FALLBACK_VERSION : resolveVersion();
 
     /**
@@ -789,12 +789,68 @@ public class BridgeLinkLauncher extends Application implements Progress {
             appDir = startupArgs[0]; // Override with first parameter if provided
         }
 
+        File appRoot = new File(appDir);
+        File baseDir = appRoot;
+        // System install locations (/opt/... on Linux, Program Files on Windows)
+        // are usually not writable by regular users: keep user data in the home
+        // directory instead so settings survive and can always be saved.
+        if (!isWritableBase(appRoot)) {
+            baseDir = new File(System.getProperty("user.home"), ".bridgelink-launcher");
+            System.out.println("Application folder is not writable (" + appDir + "); storing data in " + baseDir);
+            migrateDataFolder(new File(appRoot, "data"), new File(baseDir, "data"));
+        }
+
         // Set up data and cache folders
-        dataFolder = new File(appDir, "data");
-        cacheFolder = new File(appDir, "cache");
+        dataFolder = new File(baseDir, "data");
+        cacheFolder = new File(baseDir, "cache");
 
         // Copy resource icons to data/icons folder
         copyResourceIconsToDataFolder();
+    }
+
+    /** True when a "data" folder can be created and written inside the given directory. */
+    private static boolean isWritableBase(File dir) {
+        try {
+            File data = new File(dir, "data");
+            if (!data.exists() && !data.mkdirs()) {
+                return false;
+            }
+            File probe = File.createTempFile("bridgelink-probe", ".tmp", data);
+            return probe.delete();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** One-time copy of existing settings from a read-only install folder to the user home. */
+    private static void migrateDataFolder(File source, File target) {
+        if (!source.isDirectory() || new File(target, "connections.json").exists()) {
+            return; // nothing to migrate, or already migrated on a previous run
+        }
+        try {
+            copyDirectory(source, target);
+            System.out.println("Migrated existing settings from " + source + " to " + target);
+        } catch (Exception e) {
+            System.err.println("Could not migrate settings from " + source + ": " + e.getMessage());
+        }
+    }
+
+    private static void copyDirectory(File src, File dst) throws IOException {
+        if (!dst.exists() && !dst.mkdirs()) {
+            throw new IOException("Cannot create directory: " + dst);
+        }
+        File[] children = src.listFiles();
+        if (children == null) {
+            return;
+        }
+        for (File child : children) {
+            File out = new File(dst, child.getName());
+            if (child.isDirectory()) {
+                copyDirectory(child, out);
+            } else {
+                Files.copy(child.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
     }
 
     private void checkWritePermissions(Stage stage) {
