@@ -72,7 +72,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
     // jar the manifest value wins (see resolveVersion()).
     // Package-private so UpdateChecker can use it as the single source of truth
     // for the running version when the jar manifest carries no Implementation-Version.
-    static final String FALLBACK_VERSION = "1.6.2";
+    static final String FALLBACK_VERSION = "1.7.0";
     private static final String VERSION = DEVELOP ? "Development " + FALLBACK_VERSION : resolveVersion();
 
     /**
@@ -1481,28 +1481,82 @@ public class BridgeLinkLauncher extends Application implements Progress {
     private void exportConnections() {
         if (isLaunching || connectionsList.isEmpty()) return;
 
-        ExportOptionsDialog exportDialog = new ExportOptionsDialog(primaryStage, LAUNCHER_ICON);
+        // Derive the scoping options from the current tree selection: a selected
+        // connection node offers itself and its group, a selected group node
+        // offers that group.
+        Connection selectedConnection = null;
+        String selectedGroup = null;
+        TreeItem<Connection> selectedItem = connectionsTreeView.getSelectionModel().getSelectedItem();
+        if (selectedItem != null && selectedItem.getValue() != null) {
+            Connection value = selectedItem.getValue();
+            if (value.getAddress() != null) { // connection node
+                selectedConnection = value;
+                if (StringUtils.isNotBlank(value.getGroup())) {
+                    selectedGroup = value.getGroup();
+                }
+            } else if (StringUtils.isNotBlank(value.getGroup())) { // group node
+                selectedGroup = value.getGroup();
+            }
+        }
+
+        ExportOptionsDialog exportDialog = new ExportOptionsDialog(primaryStage, LAUNCHER_ICON,
+                selectedConnection != null ? selectedConnection.getName() : null, selectedGroup);
         if (!exportDialog.showAndWait()) return;
+
+        List<Connection> toExport;
+        String baseName;
+        switch (exportDialog.getScope()) {
+            case SELECTED_CONNECTION:
+                if (selectedConnection == null) { // defensive: option was disabled
+                    toExport = connectionsList;
+                    baseName = "all_connections";
+                } else {
+                    toExport = new ArrayList<>();
+                    toExport.add(selectedConnection);
+                    baseName = sanitizeFileName(selectedConnection.getName());
+                }
+                break;
+            case SELECTED_GROUP:
+                final String group = selectedGroup != null ? selectedGroup : "";
+                toExport = new ArrayList<>();
+                for (Connection conn : connectionsList) {
+                    if (group.equals(conn.getGroup())) {
+                        toExport.add(conn);
+                    }
+                }
+                baseName = sanitizeFileName(group) + "_connections";
+                break;
+            case ALL:
+            default:
+                toExport = connectionsList;
+                baseName = "all_connections";
+        }
 
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Export Connections");
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("JSON Files", "*.json")
         );
-        fileChooser.setInitialFileName("all_connections.json");
+        fileChooser.setInitialFileName(baseName + ".json");
         File file = fileChooser.showSaveDialog(primaryStage);
 
         if (file != null) {
-            writeConnectionsToFile(file, exportDialog.isExportWithCredential());
+            writeConnectionsToFile(file, toExport, exportDialog.isExportWithCredential());
         }
     }
 
-    private void writeConnectionsToFile(File file, boolean withCredential) {
+    /** Makes a connection/group name safe for use as a file name. */
+    private static String sanitizeFileName(String name) {
+        String s = StringUtils.isBlank(name) ? "connection" : name.trim();
+        return s.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    private void writeConnectionsToFile(File file, List<Connection> connections, boolean withCredential) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             if (!withCredential) {
                 List<Connection> sanitized = new ArrayList<>();
-                for (Connection conn : connectionsList) {
+                for (Connection conn : connections) {
                     Connection copy = new Connection(
                             conn.getId(), conn.getName(), conn.getAddress(),
                             conn.getJavaHome(), conn.getJavaHomeBundledValue(), conn.getJavaFxHome(),
@@ -1517,7 +1571,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
                 }
                 objectMapper.writeValue(file, sanitized);
             } else {
-                objectMapper.writeValue(file, connectionsList);
+                objectMapper.writeValue(file, connections);
             }
         } catch (IOException e) {
             showAlert("Failed to export connections: " + e.getMessage());
