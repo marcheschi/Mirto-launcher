@@ -141,7 +141,8 @@ public class UpdateChecker {
         } catch (Exception ignored) {
             // fall through to the constant
         }
-        return "1.6.0";
+        // Single source of truth: must stay in sync with pom.xml via FALLBACK_VERSION.
+        return BridgeLinkLauncher.FALLBACK_VERSION;
     }
 
     /**

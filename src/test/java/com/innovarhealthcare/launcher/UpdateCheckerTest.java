@@ -112,9 +112,19 @@ class UpdateCheckerTest {
     }
 
     @Test
-    void currentVersionMatchesPom() {
+    void currentVersionMatchesFallbackConstant() {
         String v = UpdateChecker.currentVersion();
         assertTrue(v.matches("\\d+\\.\\d+\\.\\d+.*"));
-        assertEquals("1.6.0", v); // keep in sync with pom.xml / FALLBACK_VERSION
+        // Single source of truth: FALLBACK_VERSION is kept in sync with pom.xml.
+        assertEquals(BridgeLinkLauncher.FALLBACK_VERSION, v);
+    }
+
+    @Test
+    void runningVersionIsNotReportedAsUpdate() {
+        // Regression: the banner must not suggest an update to the version that
+        // is already running (happened when the fallback constant drifted).
+        serve("/api", 200, "{\"tag_name\":\"v" + BridgeLinkLauncher.FALLBACK_VERSION + "\",\"html_url\":\"u\"}");
+        UpdateChecker checker = new UpdateChecker(base + "/api");
+        assertFalse(checker.checkNow().updateAvailable);
     }
 }
