@@ -3,16 +3,16 @@ An open source Admin Launcher for BridgeLink (and OSS Mirth Connect)
 
 ## Download
 
-Latest release: **[v1.6.1](https://github.com/marcheschi/BridgeLink-launcher/releases/tag/v1.6.1)**
+Latest release: **[v1.6.2](https://github.com/marcheschi/BridgeLink-launcher/releases/tag/v1.6.2)**
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows x64 | [BridgeLinkLauncher-1.6.1-windows-x64-setup.exe](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.1/BridgeLinkLauncher-1.6.1-windows-x64-setup.exe) | Installer with **embedded Java 17 + JavaFX** — no Java installation required |
-| Linux (Debian/Ubuntu) | [bridgelink-launcher_1.6.1_amd64.deb](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.1/bridgelink-launcher_1.6.1_amd64.deb) | .deb package with **embedded Java 17 + JavaFX** — no Java installation required |
-| Linux (any distro) | [BridgeLink-Launcher-1.6.1-x86_64.AppImage](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.1/BridgeLink-Launcher-1.6.1-x86_64.AppImage) | Portable AppImage with **embedded Java 17 + JavaFX** — `chmod +x` and run |
-| Cross-platform | [bridge-link-launcher-1.6.1.jar](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.1/bridge-link-launcher-1.6.1.jar) | Executable jar, run with any JDK 17+: `java -jar bridge-link-launcher-1.6.1.jar` |
-| Linux | [bridgelink-starter.sh](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.1/bridgelink-starter.sh) | One-shot starter: runs the jar and auto-provisions the JavaFX JRE |
-| Linux | [setup-jre.sh](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.1/setup-jre.sh) | Provisions a Zulu FX 17 runtime into `./jre` (idempotent) |
+| Windows x64 | [BridgeLinkLauncher-1.6.2-windows-x64-setup.exe](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.2/BridgeLinkLauncher-1.6.2-windows-x64-setup.exe) | Installer with **embedded Java 17 + JavaFX** — no Java installation required |
+| Linux (Debian/Ubuntu) | [bridgelink-launcher_1.6.2_amd64.deb](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.2/bridgelink-launcher_1.6.2_amd64.deb) | .deb package with **embedded Java 17 + JavaFX** — no Java installation required |
+| Linux (any distro) | [BridgeLink-Launcher-1.6.2-x86_64.AppImage](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.2/BridgeLink-Launcher-1.6.2-x86_64.AppImage) | Portable AppImage with **embedded Java 17 + JavaFX** — `chmod +x` and run |
+| Cross-platform | [bridge-link-launcher-1.6.2.jar](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.2/bridge-link-launcher-1.6.2.jar) | Executable jar, run with any JDK 17+: `java -jar bridge-link-launcher-1.6.2.jar` |
+| Linux | [bridgelink-starter.sh](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.2/bridgelink-starter.sh) | One-shot starter: runs the jar and auto-provisions the JavaFX JRE |
+| Linux | [setup-jre.sh](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.6.2/setup-jre.sh) | Provisions a Zulu FX 17 runtime into `./jre` (idempotent) |
 
 All downloads: [Releases page](https://github.com/marcheschi/BridgeLink-launcher/releases)
 
