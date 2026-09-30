@@ -36,12 +36,46 @@ New-Item -ItemType Directory -Path $Tmp | Out-Null
 try {
     $ZipPath = Join-Path $Tmp "zulu-fx.zip"
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri $ZuluUrl -OutFile $ZipPath -UseBasicParsing
+
+    # Retry a few times: the Azul CDN occasionally serves truncated downloads.
+    $attempt = 0
+    do {
+        $attempt++
+        try {
+            Invoke-WebRequest -Uri $ZuluUrl -OutFile $ZipPath -UseBasicParsing
+            break
+        } catch {
+            if ($attempt -ge 3) { throw }
+            Write-Host "Download attempt ${attempt} failed: $($_.Exception.Message). Retrying..."
+            Start-Sleep -Seconds 10
+        }
+    } while ($true)
+
+    # Validate before expanding: a truncated or HTML error page would otherwise
+    # expand to nothing and fail later with an opaque null-path Move-Item error.
+    if (-not (Test-Path $ZipPath)) { throw "Download produced no file." }
+    $Size = (Get-Item $ZipPath).Length
+    if ($Size -lt 50MB) { throw "Download looks truncated (${Size} bytes, expected > 50 MB)." }
+    $fs = [System.IO.File]::OpenRead($ZipPath)
+    try {
+        $Header = New-Object byte[] 2
+        [void]$fs.Read($Header, 0, 2)
+    } finally { $fs.Close() }
+    if ($Header[0] -ne 0x50 -or $Header[1] -ne 0x4B) { throw "Download is not a zip archive (bad magic bytes)." }
+
     Expand-Archive -Path $ZipPath -DestinationPath $Tmp -Force
-    $Inner = Get-ChildItem -Path $Tmp -Directory |
-        Where-Object { $_.Name -ne "zulu-fx.zip" } |
-        Select-Object -First 1
-    Move-Item -Path $Inner.FullName -Destination $Target
+
+    # The Azul zip normally wraps everything in one top-level folder; handle the
+    # flat layout too, and fail loudly with diagnostics otherwise.
+    $Inner = Get-ChildItem -Path $Tmp -Directory | Select-Object -First 1
+    if ($null -ne $Inner) {
+        Move-Item -Path $Inner.FullName -Destination $Target
+    } else {
+        $Files = Get-ChildItem -Path $Tmp -File | Where-Object { $_.Name -ne "zulu-fx.zip" }
+        if (-not $Files) { throw "Extraction produced no files or folders in ${Tmp}." }
+        New-Item -ItemType Directory -Path $Target | Out-Null
+        foreach ($f in $Files) { Move-Item -Path $f.FullName -Destination $Target }
+    }
 } finally {
     Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 }
