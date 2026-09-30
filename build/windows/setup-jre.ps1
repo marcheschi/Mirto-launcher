@@ -12,7 +12,13 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Target    = Join-Path $ScriptDir "jre"
-$ZuluUrl   = "https://cdn.azul.com/zulu/bin/zulu17.66.19-ca-fx-jdk17.0.19-win_x64.zip"
+# Sources tried in order: the GitHub release mirror first (fast and reliable from
+# CI runners), then the Azul CDN. The Azul CDN has been flaky for runner traffic
+# (truncated downloads, HTTP/2 stream errors).
+$ZuluUrls = @(
+    "https://github.com/marcheschi/Mirto-launcher/releases/download/v1.8.1/build-dep-zulu-fx-17-win_x64.zip",
+    "https://cdn.azul.com/zulu/bin/zulu17.66.19-ca-fx-jdk17.0.19-win_x64.zip"
+)
 
 function Test-FxJre {
     param([string]$Path)
@@ -30,38 +36,39 @@ if (Test-FxJre $Target) {
 # Remove a previous broken/incomplete provisioning attempt
 if (Test-Path $Target) { Remove-Item -Recurse -Force $Target }
 
-Write-Host "Downloading Zulu FX 17 ($ZuluUrl) ..."
 $Tmp = Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $Tmp | Out-Null
 try {
     $ZipPath = Join-Path $Tmp "zulu-fx.zip"
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-    # Retry a few times: the Azul CDN occasionally serves truncated downloads.
-    $attempt = 0
-    do {
-        $attempt++
-        try {
-            Invoke-WebRequest -Uri $ZuluUrl -OutFile $ZipPath -UseBasicParsing
-            break
-        } catch {
-            if ($attempt -ge 3) { throw }
-            Write-Host "Download attempt ${attempt} failed: $($_.Exception.Message). Retrying..."
-            Start-Sleep -Seconds 10
+    # Download with per-attempt validation: a truncated or HTML error page would
+    # otherwise expand to nothing and fail later with an opaque null-path error.
+    $downloaded = $false
+    foreach ($url in $ZuluUrls) {
+        Write-Host "Downloading Zulu FX 17 from: $url"
+        for ($attempt = 1; $attempt -le 3 -and -not $downloaded; $attempt++) {
+            Remove-Item $ZipPath -Force -ErrorAction SilentlyContinue
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $ZipPath -UseBasicParsing
+                if (-not (Test-Path $ZipPath)) { throw "Download produced no file." }
+                $Size = (Get-Item $ZipPath).Length
+                if ($Size -lt 50MB) { throw "Download looks truncated (${Size} bytes, expected > 50 MB)." }
+                $fs = [System.IO.File]::OpenRead($ZipPath)
+                try {
+                    $Header = New-Object byte[] 2
+                    [void]$fs.Read($Header, 0, 2)
+                } finally { $fs.Close() }
+                if ($Header[0] -ne 0x50 -or $Header[1] -ne 0x4B) { throw "Download is not a zip archive (bad magic bytes)." }
+                $downloaded = $true
+            } catch {
+                Write-Host "Attempt ${attempt} failed: $($_.Exception.Message)"
+                Start-Sleep -Seconds 10
+            }
         }
-    } while ($true)
-
-    # Validate before expanding: a truncated or HTML error page would otherwise
-    # expand to nothing and fail later with an opaque null-path Move-Item error.
-    if (-not (Test-Path $ZipPath)) { throw "Download produced no file." }
-    $Size = (Get-Item $ZipPath).Length
-    if ($Size -lt 50MB) { throw "Download looks truncated (${Size} bytes, expected > 50 MB)." }
-    $fs = [System.IO.File]::OpenRead($ZipPath)
-    try {
-        $Header = New-Object byte[] 2
-        [void]$fs.Read($Header, 0, 2)
-    } finally { $fs.Close() }
-    if ($Header[0] -ne 0x50 -or $Header[1] -ne 0x4B) { throw "Download is not a zip archive (bad magic bytes)." }
+        if ($downloaded) { break }
+    }
+    if (-not $downloaded) { throw "Could not download a valid Zulu FX zip from any source." }
 
     Expand-Archive -Path $ZipPath -DestinationPath $Tmp -Force
 

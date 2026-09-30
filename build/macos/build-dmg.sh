@@ -13,10 +13,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 OUT="$SCRIPT_DIR/output"
 
+# Sources tried in order: the GitHub release mirror first (fast and reliable from
+# CI runners), then the Azul CDN. The Azul CDN has been flaky for runner traffic
+# (truncated downloads, HTTP/2 stream errors).
+GH_BASE="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.8.1"
+
 ARCH="${1:-x64}"
 case "$ARCH" in
-  x64)     ZULU_URL="https://cdn.azul.com/zulu/bin/zulu17.68.203-ca-fx-jdk17.0.20.1-macosx_x64.tar.gz"; SUFFIX="x86_64" ;;
-  aarch64) ZULU_URL="https://cdn.azul.com/zulu/bin/zulu17.68.203-ca-fx-jdk17.0.20.1-macosx_aarch64.tar.gz"; SUFFIX="arm64" ;;
+  x64)     GH_URL="$GH_BASE/build-dep-zulu-fx-17-macosx_x64.tar.gz"; ZULU_URL="https://cdn.azul.com/zulu/bin/zulu17.68.203-ca-fx-jdk17.0.20.1-macosx_x64.tar.gz"; SUFFIX="x86_64" ;;
+  aarch64) GH_URL="$GH_BASE/build-dep-zulu-fx-17-macosx_aarch64.tar.gz"; ZULU_URL="https://cdn.azul.com/zulu/bin/zulu17.68.203-ca-fx-jdk17.0.20.1-macosx_aarch64.tar.gz"; SUFFIX="arm64" ;;
   *) echo "ERROR: unknown architecture '$ARCH' (expected x64 or aarch64)" >&2; exit 1 ;;
 esac
 
@@ -55,18 +60,20 @@ cp "$ROOT/lib/java-console.jar" "$APP/Contents/Resources/app/lib/java-console.ja
 
 # Embedded JavaFX runtime (Zulu FX 17, matching architecture)
 echo "==> Downloading Zulu FX 17 ($SUFFIX) ..."
-# The Azul CDN is flaky (HTTP/2 stream errors, truncated files): retry with a
-# full archive validation so a bad download fails fast instead of breaking later.
+# Retry with a full archive validation so a bad download fails fast instead of
+# breaking later (the Azul CDN is known to serve truncated files / HTTP/2 errors).
 ok=0
-for attempt in 1 2 3; do
-    rm -f "$WORK/zulu-fx.tar.gz"
-    if curl -fL --retry 3 --max-time 3600 -o "$WORK/zulu-fx.tar.gz" "$ZULU_URL" \
-       && tar -tzf "$WORK/zulu-fx.tar.gz" >/dev/null 2>&1; then
-        ok=1
-        break
-    fi
-    echo "WARN: Zulu FX attempt $attempt failed or produced a bad archive, retrying..." >&2
-    sleep 15
+for url in "$GH_URL" "$ZULU_URL"; do
+    for attempt in 1 2 3; do
+        rm -f "$WORK/zulu-fx.tar.gz"
+        if curl -fL --retry 3 --max-time 3600 -o "$WORK/zulu-fx.tar.gz" "$url" \
+           && tar -tzf "$WORK/zulu-fx.tar.gz" >/dev/null 2>&1; then
+            ok=1
+            break 2
+        fi
+        echo "WARN: Zulu FX attempt $attempt from ${url%%/*} failed or produced a bad archive, retrying..." >&2
+        sleep 15
+    done
 done
 [[ $ok -eq 1 ]] || { echo "ERROR: could not download a valid Zulu FX archive" >&2; exit 1; }
 tar -xzf "$WORK/zulu-fx.tar.gz" -C "$WORK"
