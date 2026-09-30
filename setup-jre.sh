@@ -36,7 +36,20 @@ else
     echo "Downloading Zulu FX 17 ($ZULU_URL) ..."
     tmp="$(mktemp -d)"
     trap 'rm -rf "$tmp"' EXIT
-    curl -fL --retry 3 -o "$tmp/zulu-fx.tar.gz" "$ZULU_URL"
+    # The Azul CDN is flaky (HTTP/2 stream errors, truncated files): retry with a
+    # full archive validation so a bad download fails fast instead of breaking later.
+    ok=0
+    for attempt in 1 2 3; do
+        rm -f "$tmp/zulu-fx.tar.gz"
+        if curl -fL --retry 3 --max-time 3600 -o "$tmp/zulu-fx.tar.gz" "$ZULU_URL" \
+           && tar -tzf "$tmp/zulu-fx.tar.gz" >/dev/null 2>&1; then
+            ok=1
+            break
+        fi
+        echo "WARN: Zulu FX attempt $attempt failed or produced a bad archive, retrying..." >&2
+        sleep 15
+    done
+    [[ $ok -eq 1 ]] || { echo "ERROR: could not download a valid Zulu FX archive" >&2; exit 1; }
     tar -xzf "$tmp/zulu-fx.tar.gz" -C "$tmp"
     inner="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -1)"
     mv "$inner" "$TARGET"
