@@ -1,0 +1,53 @@
+name: macOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the DMGs to (e.g. v1.7.0)"
+        required: false
+        default: ""
+  release:
+    types: [created]
+
+jobs:
+  build-macos-dmg:
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (build only)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build Intel DMG
+        shell: bash
+        run: ./build/macos/build-dmg.sh x64
+
+      - name: Build Apple Silicon DMG (reuses the jar)
+        shell: bash
+        run: SKIP_BUILD=1 ./build/macos/build-dmg.sh aarch64
+
+      - name: Upload packages as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: build/macos/output/*.dmg
+          if-no-files-found: error
+
+      - name: Attach packages to release
+        if: github.event_name == 'release' || inputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ (github.event_name == 'release') && github.ref_name || inputs.tag }}"
+          gh release upload "$TAG" \
+            build/macos/output/BridgeLink-Launcher-*-macos_x86_64.dmg \
+            build/macos/output/BridgeLink-Launcher-*-macos_arm64.dmg \
+            --clobber
