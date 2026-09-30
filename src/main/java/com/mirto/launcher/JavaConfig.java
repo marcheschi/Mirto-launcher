@@ -2,6 +2,8 @@ package com.mirto.launcher;
 
 import org.apache.commons.lang3.SystemUtils;
 
+import java.io.File;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -118,6 +120,18 @@ public class JavaConfig {
             }
         }
 
+        // Fallback 1b: resolve the bundled JRE relative to the launcher jar location.
+        // Direct `java -jar` invocations and packaged layouts (.deb, AppImage) run from
+        // arbitrary working directories where a CWD-relative "jre/bin/java" does not exist;
+        // without this they fall through to JAVA_HOME/PATH (often a JavaFX-less JRE) and the
+        // client dies with "Error initializing QuantumRenderer: no suitable pipeline found".
+        // Same rationale as ProcessLauncher.resolveJavaConsoleJar().
+        for (Path jarCandidate : jarRelativeBundled(exe)) {
+            if (Files.isExecutable(jarCandidate)) {
+                return jarCandidate.toString();
+            }
+        }
+
         // Fallback 2: JAVA_HOME if set
         String javaHomeEnv = System.getenv("JAVA_HOME");
         if (javaHomeEnv != null && !javaHomeEnv.isEmpty()) {
@@ -135,6 +149,30 @@ public class JavaConfig {
 
         // Fallback 3: rely on PATH (java.exe/javadoc handled by the OS on Windows)
         return win ? "java.exe" : exe;
+    }
+
+    /**
+     * Bundled JRE candidates resolved relative to the launcher jar location, so the
+     * JavaFX runtime is found even when the process working directory is unrelated
+     * (direct `java -jar` from anywhere, .deb/AppImage installs). Tries the jar's own
+     * folder first (flat layout: jar next to jre/), then its parent (nested layout:
+     * jar inside lib/ with jre/ at the app root).
+     */
+    private static List<Path> jarRelativeBundled(String exe) {
+        List<Path> candidates = new ArrayList<>();
+        try {
+            String jarPath = JavaConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+            File jarDir = new File(URLDecoder.decode(jarPath, "UTF-8")).getParentFile();
+            if (jarDir != null) {
+                candidates.add(new File(jarDir, "jre/bin/" + exe).toPath());
+                if (jarDir.getParentFile() != null) {
+                    candidates.add(new File(jarDir.getParentFile(), "jre/bin/" + exe).toPath());
+                }
+            }
+        } catch (Exception ignored) {
+            // Not running from a jar (e.g. unit tests): no jar-relative candidates.
+        }
+        return candidates;
     }
 
     public String getCustomJavaHome() {
