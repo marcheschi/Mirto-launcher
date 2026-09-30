@@ -1,4 +1,4 @@
-; Inno Setup script for BridgeLink Administrator Launcher (Windows)
+; Inno Setup script for Mirto-Launcher (Windows)
 ; Builds a single-file installer that embeds the application AND a private
 ; JavaFX 17 runtime (jre\), so end users do not need Java installed.
 ;
@@ -6,10 +6,10 @@
 ;   ISCC.exe /DAppVersion=<version> installer.iss
 ; (build-installer.ps1 does this automatically)
 
-#define AppName "BridgeLink Administrator Launcher"
-#define AppExe "BridgeLinkLauncher.exe"
-#define AppPublisher "Innovar Healthcare"
-#define AppUrl "https://github.com/innovarhealthcare/bridgelink-launcher"
+#define AppName "Mirto-Launcher"
+#define AppExe "MirtoLauncher.exe"
+#define AppPublisher "Paolo Marcheschi"
+#define AppUrl "https://github.com/marcheschi/Mirto-launcher"
 #ifndef AppVersion
 #define AppVersion "0.0.0"
 #endif
@@ -22,7 +22,7 @@ AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
 AppPublisherURL={#AppUrl}
 AppSupportURL={#AppUrl}
-DefaultGroupName=BridgeLink Launcher
+DefaultGroupName=Mirto-Launcher
 UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\{#AppExe}
 ; 64-bit only install (the embedded Zulu FX runtime is win_x64)
@@ -31,13 +31,13 @@ ArchitecturesAllowed=x64compatible
 ; No admin rights required: per-user install under %LocalAppData%. This also
 ; means the app dir stays writable, so data\ and cache\ always work.
 PrivilegesRequired=lowest
-DefaultDirName={localappdata}\Programs\BridgeLinkLauncher
+DefaultDirName={localappdata}\Programs\MirtoLauncher
 ; Single big file (JRE inside): use lzma2 for best compression
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 OutputDir=output
-OutputBaseFilename=BridgeLinkLauncher-{#AppVersion}-windows-x64-setup
+OutputBaseFilename=MirtoLauncher-{#AppVersion}-windows-x64-setup
 SetupIconFile=BridgeLinkLauncher.ico
 Uninstallable=yes
 CloseApplications=yes
@@ -52,8 +52,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; Application files
-Source: "app\BridgeLinkLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "app\bridge-link-launcher-*.jar"; DestDir: "{app}"; Flags: ignoreversion
+Source: "app\MirtoLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "app\mirto-launcher-*.jar"; DestDir: "{app}"; Flags: ignoreversion
 Source: "app\lib\java-console.jar"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Embedded JavaFX runtime (java embedded)
 Source: "app\jre\*"; DestDir: "{app}\jre"; Flags: ignoreversion recursesubdirs createallsubdirs

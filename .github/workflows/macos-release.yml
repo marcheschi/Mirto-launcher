@@ -48,6 +48,6 @@ jobs:
         run: |
           TAG="${{ (github.event_name == 'release') && github.ref_name || inputs.tag }}"
           gh release upload "$TAG" \
-            build/macos/output/BridgeLink-Launcher-*-macos_x86_64.dmg \
-            build/macos/output/BridgeLink-Launcher-*-macos_arm64.dmg \
+            build/macos/output/Mirto-Launcher-*-macos_x86_64.dmg \
+            build/macos/output/Mirto-Launcher-*-macos_arm64.dmg \
             --clobber

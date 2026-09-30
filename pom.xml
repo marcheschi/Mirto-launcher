@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.innovarhealthcare</groupId>
-    <artifactId>bridge-link-launcher</artifactId>
+    <groupId>com.mirto</groupId>
+    <artifactId>mirto-launcher</artifactId>
     <version>1.7.0</version>
 
     <properties>
@@ -95,7 +95,7 @@
                             </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.innovarhealthcare.launcher.Main</mainClass>
+                                    <mainClass>com.mirto.launcher.Main</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -131,8 +131,8 @@
                                 <configuration>
                                     <headerType>gui</headerType>
                                     <jar>${project.build.directory}/${project.build.finalName}.jar</jar>
-                                    <outfile>${project.build.directory}/BridgeLinkLauncher.exe</outfile>
-                                    <errTitle>BridgeLink Launcher</errTitle>
+                                    <outfile>${project.build.directory}/MirtoLauncher.exe</outfile>
+                                    <errTitle>Mirto-Launcher</errTitle>
                                     <downloadUrl>https://adoptium.net/temurin/releases/</downloadUrl>
                                     <stayAlive>false</stayAlive>
                                     <!-- Run from the install dir so relative paths
@@ -153,14 +153,14 @@
                                     <versionInfo>
                                         <fileVersion>${project.version}.0</fileVersion>
                                         <txtFileVersion>${project.version}</txtFileVersion>
-                                        <fileDescription>BridgeLink Administrator Launcher</fileDescription>
+                                        <fileDescription>Mirto-Launcher</fileDescription>
                                         <copyright>Mozilla Public License 2.0</copyright>
                                         <productVersion>${project.version}.0</productVersion>
                                         <txtProductVersion>${project.version}</txtProductVersion>
-                                        <productName>BridgeLink Administrator Launcher</productName>
-                                        <companyName>Innovar Healthcare</companyName>
-                                        <internalName>BridgeLinkLauncher</internalName>
-                                        <originalFilename>BridgeLinkLauncher.exe</originalFilename>
+                                        <productName>Mirto-Launcher</productName>
+                                        <companyName>Paolo Marcheschi</companyName>
+                                        <internalName>MirtoLauncher</internalName>
+                                        <originalFilename>MirtoLauncher.exe</originalFilename>
                                     </versionInfo>
                                 </configuration>
                             </execution>

@@ -1,11 +1,11 @@
-# Builds the Windows release of BridgeLink Launcher:
+# Builds the Windows release of Mirto-Launcher:
 #
-#   1. mvn -Pwindows-release package   -> shaded jar + BridgeLinkLauncher.exe (launch4j)
+#   1. mvn -Pwindows-release package   -> shaded jar + MirtoLauncher.exe (launch4j)
 #   2. Provisions the embedded JavaFX JRE (Zulu FX 17) into build\windows\app\jre
 #   3. Assembles build\windows\app\    -> exe, jar, lib\java-console.jar, jre\
 #   4. Compiles build\windows\installer.iss with Inno Setup (ISCC.exe)
 #
-# The installer installs into %LocalAppData%\Programs\BridgeLinkLauncher and
+# The installer installs into %LocalAppData%\Programs\MirtoLauncher and
 # embeds the JRE, so end users need no Java installed.
 #
 # Usage:
@@ -32,7 +32,7 @@ $Version   = $Pom.project.version
 if (-not $Version) {
     Write-Error "Cannot read <version> from $PomXml"
 }
-Write-Host "BridgeLink Launcher version: $Version"
+Write-Host "Mirto-Launcher version: $Version"
 
 # ---------------------------------------------------------------- build step
 if (-not $SkipBuild) {
@@ -47,11 +47,11 @@ if (-not $SkipBuild) {
     }
 }
 
-$JarPath = Join-Path $Root "target\bridge-link-launcher-$Version.jar"
-$ExePath = Join-Path $Root "target\BridgeLinkLauncher.exe"
+$JarPath = Join-Path $Root "target\mirto-launcher-$Version.jar"
+$ExePath = Join-Path $Root "target\MirtoLauncher.exe"
 if (-not (Test-Path $JarPath)) { Write-Error "Missing $JarPath (build first)." }
 if (-not (Test-Path $ExePath)) {
-    Write-Warning "Missing $ExePath: it is produced by the launch4j step of the windows-release Maven profile."
+    Write-Warning "Missing ${ExePath}: it is produced by the launch4j step of the windows-release Maven profile."
 }
 
 # ------------------------------------------------------------ assemble step
@@ -59,7 +59,7 @@ Write-Host "==> Assembling app folder in $AppDir ..."
 if (Test-Path $AppDir) { Remove-Item -Recurse -Force $AppDir }
 New-Item -ItemType Directory -Path $AppDir | Out-Null
 
-Copy-Item (Join-Path $Root "target\bridge-link-launcher-$Version.jar") $AppDir
+Copy-Item (Join-Path $Root "target\mirto-launcher-$Version.jar") $AppDir
 if (Test-Path $ExePath) { Copy-Item $ExePath $AppDir }
 
 # Java console helper used by the "Show Java Console" option (ProcessLauncher

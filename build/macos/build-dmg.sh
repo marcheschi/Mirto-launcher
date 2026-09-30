@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Builds the macOS application bundle (.app) and disk image (.dmg) for
-# BridgeLink Launcher with an embedded JavaFX runtime (Zulu FX 17). The app
+# Mirto-Launcher with an embedded JavaFX runtime (Zulu FX 17). The app
 # installs by drag-and-drop into /Applications; when that location is not
-# writable, the launcher stores its data in ~/.bridgelink-launcher at runtime.
+# writable, the launcher stores its data in ~/.mirto-launcher at runtime.
 #
 # Usage:
 #   ./build-dmg.sh x64                 # Intel DMG (builds the jar if missing)
@@ -30,16 +30,16 @@ if [[ -z "$VERSION" ]]; then
     echo "ERROR: cannot read <version> from $ROOT/pom.xml" >&2
     exit 1
 fi
-echo "==> BridgeLink Launcher version: $VERSION (macOS $SUFFIX)"
+echo "==> Mirto-Launcher version: $VERSION (macOS $SUFFIX)"
 
 # ---------------------------------------------------------------------------
 # 1. Jar
 # ---------------------------------------------------------------------------
-if [[ "${SKIP_BUILD:-0}" != "1" || ! -f "$ROOT/target/bridge-link-launcher-$VERSION.jar" ]]; then
+if [[ "${SKIP_BUILD:-0}" != "1" || ! -f "$ROOT/target/mirto-launcher-$VERSION.jar" ]]; then
     echo "==> Building jar (mvn package) ..."
     (cd "$ROOT" && mvn -B -DskipTests package)
 fi
-JAR="$ROOT/target/bridge-link-launcher-$VERSION.jar"
+JAR="$ROOT/target/mirto-launcher-$VERSION.jar"
 [[ -f "$JAR" ]] || { echo "ERROR: missing $JAR" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ JAR="$ROOT/target/bridge-link-launcher-$VERSION.jar"
 # ---------------------------------------------------------------------------
 echo "==> Assembling app bundle in $WORK ..."
 rm -rf "$WORK"
-APP="$WORK/BridgeLink Launcher.app"
+APP="$WORK/Mirto-Launcher.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app/lib"
 
 cp "$JAR" "$APP/Contents/Resources/app/"
@@ -94,13 +94,13 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>BridgeLink Launcher</string>
+    <string>Mirto-Launcher</string>
     <key>CFBundleDisplayName</key>
-    <string>BridgeLink Launcher</string>
+    <string>Mirto-Launcher</string>
     <key>CFBundleIdentifier</key>
-    <string>com.innovarhealthcare.bridgelink-launcher</string>
+    <string>com.mirto.launcher</string>
     <key>CFBundleExecutable</key>
-    <string>BridgeLinkLauncher</string>
+    <string>MirtoLauncher</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -117,16 +117,16 @@ $ICON_BLOCK
 PLIST
 
 # Launcher executable: run the jar with the bundled JavaFX runtime from the app
-# directory (the launcher itself falls back to ~/.bridgelink-launcher for data
+# directory (the launcher itself falls back to ~/.mirto-launcher for data
 # when the install location is read-only).
-cat > "$APP/Contents/MacOS/BridgeLinkLauncher" <<'LAUNCHER'
+cat > "$APP/Contents/MacOS/MirtoLauncher" <<'LAUNCHER'
 #!/bin/bash
 DIR="$(cd "$(dirname "$0")" && pwd)"
 APP="$DIR/../Resources/app"
 
-JAR="$(ls -1t "$APP"/bridge-link-launcher-*.jar 2>/dev/null | head -1)"
+JAR="$(ls -1t "$APP"/mirto-launcher-*.jar 2>/dev/null | head -1)"
 if [[ -z "${JAR:-}" || ! -f "$JAR" ]]; then
-    echo "Error: no bridge-link-launcher jar found in $APP." >&2
+    echo "Error: no mirto-launcher jar found in $APP." >&2
     exit 1
 fi
 
@@ -144,7 +144,7 @@ fi
 cd "$APP"
 exec "$JAVA" ${JAVA_OPTS:-} -jar "$JAR" "$@"
 LAUNCHER
-chmod 755 "$APP/Contents/MacOS/BridgeLinkLauncher"
+chmod 755 "$APP/Contents/MacOS/MirtoLauncher"
 
 # ---------------------------------------------------------------------------
 # 3. DMG (app + Applications shortcut, classic drag-to-install layout)
@@ -156,9 +156,9 @@ mkdir -p "$DMG_STAGING"
 cp -R "$APP" "$DMG_STAGING/"
 ln -s /Applications "$DMG_STAGING/Applications"
 
-DMG="$OUT/BridgeLink-Launcher-$VERSION-macos_$SUFFIX.dmg"
+DMG="$OUT/Mirto-Launcher-$VERSION-macos_$SUFFIX.dmg"
 rm -f "$DMG"
-hdiutil create -volname "BridgeLink Launcher $VERSION" \
+hdiutil create -volname "Mirto-Launcher $VERSION" \
     -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG" >/dev/null
 
 echo "OK: $DMG ($(du -h "$DMG" | cut -f1))"

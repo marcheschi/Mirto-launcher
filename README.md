@@ -1,32 +1,32 @@
-# bridgelink-launcher
+# Mirto-Launcher
 An open source Admin Launcher for BridgeLink (and OSS Mirth Connect)
 
 ## Download
 
-Latest release: **[v1.7.0](https://github.com/marcheschi/BridgeLink-launcher/releases/tag/v1.7.0)**
+Latest release: **[v1.7.0](https://github.com/marcheschi/Mirto-launcher/releases/tag/v1.7.0)**
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows x64 | [BridgeLinkLauncher-1.7.0-windows-x64-setup.exe](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.7.0/BridgeLinkLauncher-1.7.0-windows-x64-setup.exe) | Installer with **embedded Java 17 + JavaFX** — no Java installation required |
-| Linux (Debian/Ubuntu) | [bridgelink-launcher_1.7.0_amd64.deb](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.7.0/bridgelink-launcher_1.7.0_amd64.deb) | .deb package with **embedded Java 17 + JavaFX** — no Java installation required |
-| Linux (any distro) | [BridgeLink-Launcher-1.7.0-x86_64.AppImage](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.7.0/BridgeLink-Launcher-1.7.0-x86_64.AppImage) | Portable AppImage with **embedded Java 17 + JavaFX** — `chmod +x` and run |
-| macOS (Intel) | [BridgeLink-Launcher-1.7.0-macos_x86_64.dmg](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.7.0/BridgeLink-Launcher-1.7.0-macos_x86_64.dmg) | Drag-to-install `.app` with **embedded Java 17 + JavaFX** — no Java installation required |
-| macOS (Apple Silicon) | [BridgeLink-Launcher-1.7.0-macos_arm64.dmg](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.7.0/BridgeLink-Launcher-1.7.0-macos_arm64.dmg) | Drag-to-install `.app` with **embedded Java 17 + JavaFX** — no Java installation required |
-| Cross-platform | [bridge-link-launcher-1.7.0.jar](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.7.0/bridge-link-launcher-1.7.0.jar) | Executable jar, run with any JDK 17+: `java -jar bridge-link-launcher-1.7.0.jar` |
-| Linux | [bridgelink-starter.sh](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.7.0/bridgelink-starter.sh) | One-shot starter: runs the jar and auto-provisions the JavaFX JRE |
-| Linux | [setup-jre.sh](https://github.com/marcheschi/BridgeLink-launcher/releases/download/v1.7.0/setup-jre.sh) | Provisions a Zulu FX 17 runtime into `./jre` (idempotent) |
+| Windows x64 | [BridgeLinkLauncher-1.7.0-windows-x64-setup.exe](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.7.0/BridgeLinkLauncher-1.7.0-windows-x64-setup.exe) | Installer with **embedded Java 17 + JavaFX** — no Java installation required |
+| Linux (Debian/Ubuntu) | [bridgelink-launcher_1.7.0_amd64.deb](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.7.0/bridgelink-launcher_1.7.0_amd64.deb) | .deb package with **embedded Java 17 + JavaFX** — no Java installation required |
+| Linux (any distro) | [BridgeLink-Launcher-1.7.0-x86_64.AppImage](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.7.0/BridgeLink-Launcher-1.7.0-x86_64.AppImage) | Portable AppImage with **embedded Java 17 + JavaFX** — `chmod +x` and run |
+| macOS (Intel) | [BridgeLink-Launcher-1.7.0-macos_x86_64.dmg](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.7.0/BridgeLink-Launcher-1.7.0-macos_x86_64.dmg) | Drag-to-install `.app` with **embedded Java 17 + JavaFX** — no Java installation required |
+| macOS (Apple Silicon) | [BridgeLink-Launcher-1.7.0-macos_arm64.dmg](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.7.0/BridgeLink-Launcher-1.7.0-macos_arm64.dmg) | Drag-to-install `.app` with **embedded Java 17 + JavaFX** — no Java installation required |
+| Cross-platform | [bridge-link-launcher-1.7.0.jar](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.7.0/bridge-link-launcher-1.7.0.jar) | Executable jar, run with any JDK 17+: `java -jar bridge-link-launcher-1.7.0.jar` |
+| Linux | [bridgelink-starter.sh](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.7.0/bridgelink-starter.sh) | One-shot starter: runs the jar and auto-provisions the JavaFX JRE |
+| Linux | [setup-jre.sh](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.7.0/setup-jre.sh) | Provisions a Zulu FX 17 runtime into `./jre` (idempotent) |
 
-All downloads: [Releases page](https://github.com/marcheschi/BridgeLink-launcher/releases)
+All downloads: [Releases page](https://github.com/marcheschi/Mirto-launcher/releases)
 
 ## Windows Release (installer with embedded Java)
 
-The Windows release ships as a single `.exe` installer (`BridgeLinkLauncher-<version>-windows-x64-setup.exe`)
+The Windows release ships as a single `.exe` installer (`MirtoLauncher-<version>-windows-x64-setup.exe`)
 that embeds a **private Java 17 runtime with JavaFX** (Zulu FX): end users do **not** need Java installed.
 
-What it installs (under `%LocalAppData%\Programs\BridgeLinkLauncher`, no admin rights required):
+What it installs (under `%LocalAppData%\Programs\MirtoLauncher`, no admin rights required):
 
-- `BridgeLinkLauncher.exe` — native launcher (launch4j) bound to the embedded `jre\`
-- `bridge-link-launcher-<version>.jar` — the application
+- `MirtoLauncher.exe` — native launcher (launch4j) bound to the embedded `jre\`
+- `mirto-launcher-<version>.jar` — the application
 - `jre\` — embedded JavaFX 17 runtime (this is the "Bundled Java 17" used at launch)
 - `lib\java-console.jar` — helper for the "Show Java Console" option
 
@@ -57,16 +57,16 @@ Notes:
 
 Both Linux packages embed the **Zulu FX 17 runtime** (Java + JavaFX): no system Java is needed.
 
-**.deb** (`bridgelink-launcher_<version>_amd64.deb`, Debian/Ubuntu and derivatives):
+**.deb** (`mirto-launcher_<version>_amd64.deb`, Debian/Ubuntu and derivatives):
 
-- Installs to `/opt/bridgelink-launcher` (jar, `lib/java-console.jar`, `jre/`)
-- `bridgelink-launcher` command in `/usr/bin`, desktop entry and hicolor icons
-- `sudo dpkg -i bridgelink-launcher_<version>_amd64.deb` or `sudo apt install ./bridgelink-launcher_<version>_amd64.deb`
+- Installs to `/opt/mirto-launcher` (jar, `lib/java-console.jar`, `jre/`)
+- `mirto-launcher` command in `/usr/bin`, desktop entry and hicolor icons
+- `sudo dpkg -i mirto-launcher_<version>_amd64.deb` or `sudo apt install ./mirto-launcher_<version>_amd64.deb`
 
-**AppImage** (`BridgeLink-Launcher-<version>-x86_64.AppImage`, any x86_64 distro):
+**AppImage** (`Mirto-Launcher-<version>-x86_64.AppImage`, any x86_64 distro):
 
 - Single portable file: `chmod +x` and run; ideal for distros without .deb support or no-root installs
-- Connection data persists in `~/.local/share/bridgelink-launcher` (the mount is read-only)
+- Connection data persists in `~/.local/share/mirto-launcher` (the mount is read-only; existing settings from the old location are merged automatically)
 
 Build them locally with `./build/linux/build-deb.sh` and `./build/linux/build-appimage.sh`
 (see [RELEASE.md](RELEASE.md)); CI builds and attaches both to every GitHub release
@@ -76,7 +76,7 @@ Build them locally with `./build/linux/build-deb.sh` and `./build/linux/build-ap
 Because the application is not signed by Apple, you may get a security warning and have to manually override your security settings to grant an exception to the launcher.
 
 **Known Issue:**
-If you extract the BridgeLink Launcher application straight to your Downloads folder, it will give you an error about "Read-Only Filesystem" when you try to save an entry.
+If you extract the Mirto-Launcher application straight to your Downloads folder, it will give you an error about "Read-Only Filesystem" when you try to save an entry.
 
 To prevent this, you can do one of the following:
 - Move the application to a different folder, such as /Applications or ~/Applications
@@ -92,12 +92,12 @@ Completed
 
 ## Upgrading via macOS DMG
 
-When installing a new version of BridgeLink Launcher using the macOS `.dmg`, your connection data is stored inside the application bundle and **will be overwritten** if you simply drag the new version into `/Applications`.
+When installing a new version of Mirto-Launcher using the macOS `.dmg`, your connection data is stored inside the application bundle and **will be overwritten** if you simply drag the new version into `/Applications`.
 
 To preserve your connections and settings, follow these steps before upgrading:
 
 1. **Before upgrading**, open Finder and navigate to your current application:
-   - Right-click `BridgeLink Administrator Launcher.app` → **Show Package Contents**
+   - Right-click `Mirto-Launcher.app` → **Show Package Contents**
    - Navigate to `Contents/Resources/app/data/`
    - Copy the entire `data` folder to a safe temporary location (e.g., your Desktop)
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Builds the Debian package (.deb) for BridgeLink Launcher with an embedded
-# JavaFX runtime (Zulu FX 17). The package installs to /opt/bridgelink-launcher
+# Builds the Debian package (.deb) for Mirto-Launcher with an embedded
+# JavaFX runtime (Zulu FX 17). The package installs to /opt/mirto-launcher
 # with a launcher script, .desktop entry and hicolor icons; the Java runtime is
 # bundled, so no system JDK/JRE is required.
 #
 # Runtime data (connections) defaults to the install dir; when it is not
 # writable (system-wide install), the launcher falls back to
-# ~/.local/share/bridgelink-launcher (handled at runtime, see the starter
+# ~/.local/share/mirto-launcher (handled at runtime, see the starter
 # script below).
 #
 # Usage:
@@ -32,11 +32,11 @@ echo "==> BridgeLink Launcher version: $VERSION"
 # ---------------------------------------------------------------------------
 # 1. Jar
 # ---------------------------------------------------------------------------
-if [[ "${SKIP_BUILD:-0}" != "1" || ! -f "$ROOT/target/bridge-link-launcher-$VERSION.jar" ]]; then
+if [[ "${SKIP_BUILD:-0}" != "1" || ! -f "$ROOT/target/mirto-launcher-$VERSION.jar" ]]; then
     echo "==> Building jar (mvn -Pwindows-release package) ..."
     (cd "$ROOT" && mvn -B -Pwindows-release -DskipTests package)
 fi
-JAR="$ROOT/target/bridge-link-launcher-$VERSION.jar"
+JAR="$ROOT/target/mirto-launcher-$VERSION.jar"
 [[ -f "$JAR" ]] || { echo "ERROR: missing $JAR" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
@@ -52,11 +52,11 @@ fi
 # ---------------------------------------------------------------------------
 echo "==> Assembling package tree in $WORK ..."
 rm -rf "$WORK"
-INSTALL_DIR="$WORK/opt/bridgelink-launcher"
+INSTALL_DIR="$WORK/opt/mirto-launcher"
 BIN_DIR="$WORK/usr/bin"
 DESKTOP_DIR="$WORK/usr/share/applications"
 ICON_DIR="$WORK/usr/share/icons/hicolor"
-DOC_DIR="$WORK/usr/share/doc/bridgelink-launcher"
+DOC_DIR="$WORK/usr/share/doc/mirto-launcher"
 mkdir -p "$INSTALL_DIR/lib" "$BIN_DIR" "$DESKTOP_DIR" "$DOC_DIR"
 
 cp "$JAR" "$INSTALL_DIR/"
@@ -66,16 +66,16 @@ cp -a "$ROOT/jre" "$INSTALL_DIR/jre"
 # Launcher script: prefer the system java when the bundled one cannot run
 # (e.g. foreign-architecture package); data falls back to XDG data home when
 # the install dir is read-only.
-cat > "$BIN_DIR/bridgelink-launcher" <<'LAUNCHER'
+cat > "$BIN_DIR/mirto-launcher" <<'LAUNCHER'
 #!/usr/bin/env bash
-# BridgeLink Administrator Launcher - starter installed by the .deb package
+# Mirto-Launcher - starter installed by the .deb package
 set -euo pipefail
 
-APP_DIR="/opt/bridgelink-launcher"
-JAR="$(ls -1t "$APP_DIR"/bridge-link-launcher-*.jar 2>/dev/null | head -1)"
+APP_DIR="/opt/mirto-launcher"
+JAR="$(ls -1t "$APP_DIR"/mirto-launcher-*.jar 2>/dev/null | head -1)"
 
 if [[ -z "${JAR:-}" || ! -f "$JAR" ]]; then
-    echo "Error: no bridge-link-launcher jar found in $APP_DIR." >&2
+    echo "Error: no mirto-launcher jar found in $APP_DIR." >&2
     exit 1
 fi
 
@@ -93,37 +93,43 @@ fi
 # Data directory: install dir when writable, else XDG data home
 DATA_PARENT="$APP_DIR"
 if ! { [[ -w "$APP_DIR" ]] || [[ $EUID -eq 0 ]]; }; then
-    DATA_PARENT="${XDG_DATA_HOME:-$HOME/.local/share}/bridgelink-launcher"
+    DATA_PARENT="${XDG_DATA_HOME:-$HOME/.local/share}/mirto-launcher"
+    # Compatibility: merge settings from the pre-rename location if present.
+    LEGACY_PARENT="${XDG_DATA_HOME:-$HOME/.local/share}/bridgelink-launcher"
+    if [[ -d "$LEGACY_PARENT" && ! -f "$DATA_PARENT/connections.json" ]]; then
+        mkdir -p "$DATA_PARENT"
+        cp -rn "$LEGACY_PARENT"/. "$DATA_PARENT"/ 2>/dev/null || true
+    fi
     mkdir -p "$DATA_PARENT"
 fi
 
 cd "$DATA_PARENT"
 exec "$JAVA" ${JAVA_OPTS:-} -jar "$JAR" "$@"
 LAUNCHER
-chmod 755 "$BIN_DIR/bridgelink-launcher"
+chmod 755 "$BIN_DIR/mirto-launcher"
 
 # Desktop entry
 ICON_PATH="$INSTALL_DIR/logo.png"
 cp "$ROOT/src/main/resources/images/logo.png" "$ICON_PATH"
-sed "s|__ICON__|$ICON_PATH|g" > "$DESKTOP_DIR/bridgelink-launcher.desktop" <<'DESKTOP'
+sed "s|__ICON__|$ICON_PATH|g" > "$DESKTOP_DIR/mirto-launcher.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=BridgeLink Administrator Launcher
+Name=Mirto-Launcher
 Comment=Admin launcher for BridgeLink (and OSS Mirth Connect)
-Exec=bridgelink-launcher
+Exec=mirto-launcher
 Icon=__ICON__
 Terminal=false
 Categories=Development;Network;
-StartupWMClass=BridgeLinkLauncher
+StartupWMClass=MirtoLauncher
 DESKTOP
-chmod 644 "$DESKTOP_DIR/bridgelink-launcher.desktop"
+chmod 644 "$DESKTOP_DIR/mirto-launcher.desktop"
 
 # hicolor icons (source logo is square 192x192)
 for size in 16 24 32 48 64 128 192 256; do
     dir="$ICON_DIR/${size}x${size}/apps"
     mkdir -p "$dir"
-    convert "$ROOT/src/main/resources/images/logo.png" -resize "${size}x${size}" "$dir/bridgelink-launcher.png"
+    convert "$ROOT/src/main/resources/images/logo.png" -resize "${size}x${size}" "$dir/mirto-launcher.png"
 done
 
 # Docs
@@ -136,7 +142,7 @@ mkdir -p "$WORK/DEBIAN"
 INSTALLED_KB=$(find "$WORK" -path "$WORK/DEBIAN" -prune -o -type f -printf '%s\n' \
     | awk '{s+=$1} END {print int((s+1023)/1024)}')
 cat > "$WORK/DEBIAN/control" <<CONTROL
-Package: bridgelink-launcher
+Package: mirto-launcher
 Version: $VERSION
 Section: devel
 Priority: optional
@@ -144,7 +150,7 @@ Architecture: amd64
 Installed-Size: $INSTALLED_KB
 Depends: libc6 (>= 2.17)
 Maintainer: Paolo Marcheschi <paolo.marcheschi@ftgm.it>
-Homepage: https://github.com/marcheschi/BridgeLink-launcher
+Homepage: https://github.com/marcheschi/Mirto-launcher
 Description: Admin launcher for BridgeLink (and OSS Mirth Connect)
  JavaFX desktop application to download, configure and launch the
  BridgeLink/Mirth Connect administrator client from a JNLP endpoint.
@@ -156,7 +162,7 @@ CONTROL
 # --------------------------------------------------------------------- pack
 echo "==> Packing .deb ..."
 mkdir -p "$OUT"
-DEB="$OUT/bridgelink-launcher_${VERSION}_amd64.deb"
+DEB="$OUT/mirto-launcher_${VERSION}_amd64.deb"
 rm -f "$DEB"
 dpkg-deb --root-owner-group --build "$WORK" "$DEB"
 

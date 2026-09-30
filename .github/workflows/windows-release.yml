@@ -37,8 +37,8 @@ jobs:
           & powershell -ExecutionPolicy Bypass -File .\build\windows\setup-jre.ps1
           $app = "build\windows\app"
           New-Item -ItemType Directory -Path $app -Force | Out-Null
-          Copy-Item "target\bridge-link-launcher-$version.jar" $app
-          Copy-Item "target\BridgeLinkLauncher.exe" $app
+          Copy-Item "target\mirto-launcher-$version.jar" $app
+          Copy-Item "target\MirtoLauncher.exe" $app
           New-Item -ItemType Directory -Path "$app\lib" -Force | Out-Null
           Copy-Item "lib\java-console.jar" "$app\lib\java-console.jar"
           Copy-Item "build\windows\jre" "$app\jre" -Recurse -Force
@@ -54,8 +54,8 @@ jobs:
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BridgeLinkLauncher-windows-installer
-          path: build/windows/output/BridgeLinkLauncher-*-windows-x64-setup.exe
+          name: MirtoLauncher-windows-installer
+          path: build/windows/output/MirtoLauncher-*-windows-x64-setup.exe
           if-no-files-found: error
 
       - name: Attach installer to release
@@ -65,5 +65,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload $env:GITHUB_REF_NAME `
-            (Get-ChildItem build\windows\output\BridgeLinkLauncher-*-windows-x64-setup.exe).FullName `
+            (Get-ChildItem build\windows\output\MirtoLauncher-*-windows-x64-setup.exe).FullName `
             --clobber

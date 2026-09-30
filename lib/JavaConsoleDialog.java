@@ -1,4 +1,4 @@
-package com.innovarhealthcare.launcher;
+package com.mirto.launcher;
 
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;

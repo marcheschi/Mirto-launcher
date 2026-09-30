@@ -1,13 +1,13 @@
 # Release Procedure
 
-How to cut a new BridgeLink Launcher release. Following these steps produces:
+How to cut a new Mirto-Launcher release. Following these steps produces:
 
-- `bridge-link-launcher-<version>.jar` — executable jar (attached manually)
-- `BridgeLinkLauncher-<version>-windows-x64-setup.exe` — Windows installer with an
+- `mirto-launcher-<version>.jar` — executable jar (attached manually)
+- `MirtoLauncher-<version>-windows-x64-setup.exe` — Windows installer with an
   embedded Java 17 + JavaFX runtime (built and attached **automatically by CI**)
-- `bridgelink-launcher_<version>_amd64.deb` — Debian package with embedded
+- `mirto-launcher_<version>_amd64.deb` — Debian package with embedded
   Java 17 + JavaFX (built and attached **automatically by CI**)
-- `BridgeLink-Launcher-<version>-x86_64.AppImage` — portable AppImage with
+- `Mirto-Launcher-<version>-x86_64.AppImage` — portable AppImage with
   embedded Java 17 + JavaFX (built and attached **automatically by CI**)
 
 ## 1. Bump the version
@@ -17,13 +17,13 @@ Two places must stay in sync:
 | File | What to change |
 |---|---|
 | `pom.xml` | `<version>` in the project coordinates |
-| `src/main/java/com/innovarhealthcare/launcher/BridgeLinkLauncher.java` | `FALLBACK_VERSION` constant (used when the jar manifest has no version) |
+| `src/main/java/com/mirto/launcher/BridgeLinkLauncher.java` | `FALLBACK_VERSION` constant (used when the jar manifest has no version) |
 
 ```bash
 # example: 1.5.0 -> 1.6.0
 sed -i 's|<version>1.5.0</version>|<version>1.6.0</version>|' pom.xml
 sed -i 's|FALLBACK_VERSION = "1.5.0"|FALLBACK_VERSION = "1.6.0"|' \
-    src/main/java/com/innovarhealthcare/launcher/BridgeLinkLauncher.java
+    src/main/java/com/mirto/launcher/BridgeLinkLauncher.java
 ```
 
 ## 2. Build and verify locally
@@ -32,19 +32,19 @@ sed -i 's|FALLBACK_VERSION = "1.5.0"|FALLBACK_VERSION = "1.6.0"|' \
 # Shaded jar + Windows exe wrapper (launch4j runs fine on Linux too)
 mvn -B -Pwindows-release -DskipTests package
 
-# Expect: target/bridge-link-launcher-<version>.jar
-#         target/BridgeLinkLauncher.exe
+# Expect: target/mirto-launcher-<version>.jar
+#         target/MirtoLauncher.exe
 ls -la target/
 ```
 
-The `windows-release` profile is required: it produces `BridgeLinkLauncher.exe`
+The `windows-release` profile is required: it produces `MirtoLauncher.exe`
 via launch4j, configured to use the embedded `jre/` runtime shipped by the
 installer.
 
 ## 3. Commit and push
 
 ```bash
-git add pom.xml src/main/java/com/innovarhealthcare/launcher/BridgeLinkLauncher.java
+git add pom.xml src/main/java/com/mirto/launcher/BridgeLinkLauncher.java
 git commit -m "Bump version to <version>"
 git push origin main
 ```
@@ -58,7 +58,7 @@ the release, otherwise the installer is not built.
 ```bash
 gh release create v<version> \
     --target main \
-    --title "BridgeLink Launcher <version>" \
+    --title "Mirto-Launcher <version>" \
     --notes "..."
 ```
 
@@ -75,7 +75,7 @@ Creating the release automatically triggers **two** workflows:
 
 ```bash
 gh release upload v<version> \
-    target/bridge-link-launcher-<version>.jar \
+    target/mirto-launcher-<version>.jar \
     bridgelink-starter.sh \
     setup-jre.sh \
     --clobber
@@ -93,16 +93,16 @@ gh run watch <run-id>   # ~10 min each: the embedded JRE is big and slow to comp
 gh release view v<version> --json assets --jq '.assets[].name'
 
 # Expected:
-#   BridgeLinkLauncher-<version>-windows-x64-setup.exe   (built by CI)
-#   bridgelink-launcher_<version>_amd64.deb              (built by CI)
-#   BridgeLink-Launcher-<version>-x86_64.AppImage        (built by CI)
-#   bridge-link-launcher-<version>.jar                   (uploaded in step 5)
+#   MirtoLauncher-<version>-windows-x64-setup.exe   (built by CI)
+#   mirto-launcher_<version>_amd64.deb              (built by CI)
+#   Mirto-Launcher-<version>-x86_64.AppImage        (built by CI)
+#   mirto-launcher-<version>.jar                   (uploaded in step 5)
 #   bridgelink-starter.sh                                (uploaded in step 5)
 #   setup-jre.sh                                         (uploaded in step 5)
 
 # Direct download links must answer 200
 curl -sIL -o /dev/null -w "%{http_code}\n" \
-    "https://github.com/marcheschi/BridgeLink-launcher/releases/download/v<version>/BridgeLinkLauncher-<version>-windows-x64-setup.exe"
+    "https://github.com/marcheschi/Mirto-launcher/releases/download/v<version>/MirtoLauncher-<version>-windows-x64-setup.exe"
 ```
 
 Finally, update the **Download** section of `README.md` with the new version's
@@ -114,7 +114,7 @@ On a Windows machine with Maven + JDK 17 + Inno Setup 6:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build\windows\build-installer.ps1
-# output: build\windows\output\BridgeLinkLauncher-<version>-windows-x64-setup.exe
+# output: build\windows\output\MirtoLauncher-<version>-windows-x64-setup.exe
 ```
 
 ## Troubleshooting
