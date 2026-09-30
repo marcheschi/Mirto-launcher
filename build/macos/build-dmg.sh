@@ -59,8 +59,15 @@ curl -fL --retry 3 -o "$WORK/zulu-fx.tar.gz" "$ZULU_URL"
 tar -xzf "$WORK/zulu-fx.tar.gz" -C "$WORK"
 rm -f "$WORK/zulu-fx.tar.gz"
 JRE_DIR="$(find "$WORK" -maxdepth 1 -type d -name 'zulu*' | head -1)"
-[[ -n "${JRE_DIR:-}" && -x "$JRE_DIR/bin/java" ]] || { echo "ERROR: Zulu FX runtime not found after extraction" >&2; exit 1; }
-mv "$JRE_DIR" "$APP/Contents/Resources/app/jre"
+# macOS tarballs use the bundle layout (<dir>/Contents/Home); normalize to a
+# flat runtime so the app's jre/bin/java path works everywhere.
+if [[ -n "${JRE_DIR:-}" && -x "$JRE_DIR/Contents/Home/bin/java" ]]; then
+    JRE_HOME="$JRE_DIR/Contents/Home"
+else
+    JRE_HOME="${JRE_DIR:-}"
+fi
+[[ -n "$JRE_HOME" && -x "$JRE_HOME/bin/java" ]] || { echo "ERROR: Zulu FX runtime not found after extraction" >&2; exit 1; }
+mv "$JRE_HOME" "$APP/Contents/Resources/app/jre"
 
 # App icon (best effort; requires sips/iconutil on macOS)
 ICON_BLOCK=""
