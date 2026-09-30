@@ -9,7 +9,6 @@
 <meta property="og:description" content="Connessioni sicure, credenziali cifrate e JavaFX già incluso su Windows, Linux e macOS. Open source MPL-2.0.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://marcheschi.github.io/Mirto-launcher/">
-<meta property="og:image" content="https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=sleek%20dark%20abstract%203d%20illustration%20of%20a%20glowing%20digital%20bridge%20connecting%20two%20server%20nodes%2C%20emerald%20green%20and%20teal%20neon%20light%20trails%20flowing%20across%20deep%20navy%20background%2C%20modern%20minimal%20tech%20aesthetic%2C%20soft%20bokeh%20particles%2C%20high%20quality&image_size=landscape_16_9">
 <style>
   :root {
     --bg: #070b14;
@@ -95,8 +94,8 @@
   .btn-primary { background: var(--gradient); color: #04120c; box-shadow: 0 8px 26px rgba(16, 185, 129, 0.35); }
   .btn-ghost { border: 1px solid var(--card-border); color: var(--text); background: var(--card); }
   .hero-art { position: relative; }
-  .hero-art img {
-    width: 100%; display: block; border-radius: 20px;
+  .hero-art svg {
+    width: 100%; height: auto; display: block; border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 30px 80px rgba(2, 8, 20, 0.7), 0 0 60px rgba(16, 185, 129, 0.14);
   }
@@ -208,7 +207,72 @@
     </div>
   </div>
   <div class="hero-art fade-up d3">
-    <img src="https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=sleek%20dark%20abstract%203d%20illustration%20of%20a%20glowing%20digital%20bridge%20connecting%20two%20server%20nodes%2C%20emerald%20green%20and%20teal%20neon%20light%20trails%20flowing%20across%20deep%20navy%20background%2C%20modern%20minimal%20tech%20aesthetic%2C%20soft%20bokeh%20particles%2C%20high%20quality&image_size=landscape_16_9" alt="Illustrazione: ponte digitale luminoso che collega due nodi server">
+    <svg viewBox="0 0 1200 750" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ponte digitale luminoso che collega due nodi server">
+      <defs>
+        <radialGradient id="bgGlow" cx="50%" cy="42%" r="70%">
+          <stop offset="0%" stop-color="#123a33"/>
+          <stop offset="55%" stop-color="#0b1626"/>
+          <stop offset="100%" stop-color="#080d18"/>
+        </radialGradient>
+        <linearGradient id="bridge" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#10b981"/>
+          <stop offset="100%" stop-color="#2dd4bf"/>
+        </linearGradient>
+        <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="7" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2" r="1.6" fill="rgba(255,255,255,0.05)"/>
+        </pattern>
+      </defs>
+
+      <!-- background -->
+      <rect width="1200" height="750" fill="url(#bgGlow)"/>
+      <rect width="1200" height="750" fill="url(#dots)"/>
+      <circle cx="980" cy="150" r="60" fill="#10b981" opacity="0.07"/>
+      <circle cx="230" cy="120" r="40" fill="#2dd4bf" opacity="0.08"/>
+
+      <!-- bridge: wide halo + main line -->
+      <path d="M 265 470 C 450 255, 750 255, 935 470" fill="none" stroke="#10b981" stroke-opacity="0.14" stroke-width="16" stroke-linecap="round"/>
+      <path d="M 265 470 C 450 255, 750 255, 935 470" fill="none" stroke="url(#bridge)" stroke-width="5" stroke-linecap="round" filter="url(#softGlow)"/>
+
+      <!-- static particles on the bridge -->
+      <circle cx="390" cy="368" r="5" fill="#a7f3d0" opacity="0.9" filter="url(#softGlow)"/>
+      <circle cx="492" cy="326" r="4" fill="#2dd4bf" opacity="0.85"/>
+      <circle cx="600" cy="311" r="7" fill="#a7f3d0" filter="url(#softGlow)"/>
+      <circle cx="708" cy="326" r="4" fill="#2dd4bf" opacity="0.85"/>
+      <circle cx="810" cy="368" r="5" fill="#a7f3d0" opacity="0.9" filter="url(#softGlow)"/>
+
+      <!-- animated data pulses travelling along the bridge -->
+      <circle r="6" fill="#2dd4bf" filter="url(#softGlow)">
+        <animateMotion dur="4.5s" repeatCount="indefinite" path="M 265 470 C 450 255, 750 255, 935 470"/>
+      </circle>
+      <circle r="4" fill="#a7f3d0">
+        <animateMotion dur="6s" begin="-2.5s" repeatCount="indefinite" path="M 265 470 C 450 255, 750 255, 935 470"/>
+      </circle>
+
+      <!-- left server node -->
+      <rect x="120" y="440" width="180" height="110" rx="16" fill="#0e1a2c" stroke="rgba(45,212,191,0.45)" stroke-width="1.5"/>
+      <line x1="145" y1="478" x2="250" y2="478" stroke="rgba(148,163,184,0.5)" stroke-width="4" stroke-linecap="round"/>
+      <line x1="145" y1="500" x2="250" y2="500" stroke="rgba(148,163,184,0.35)" stroke-width="4" stroke-linecap="round"/>
+      <line x1="145" y1="522" x2="250" y2="522" stroke="rgba(148,163,184,0.25)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="272" cy="478" r="5" fill="#2dd4bf" filter="url(#softGlow)"/>
+      <circle cx="272" cy="500" r="5" fill="#10b981" opacity="0.8"/>
+
+      <!-- right server node -->
+      <rect x="900" y="440" width="180" height="110" rx="16" fill="#0e1a2c" stroke="rgba(45,212,191,0.45)" stroke-width="1.5"/>
+      <line x1="950" y1="478" x2="1055" y2="478" stroke="rgba(148,163,184,0.5)" stroke-width="4" stroke-linecap="round"/>
+      <line x1="950" y1="500" x2="1055" y2="500" stroke="rgba(148,163,184,0.35)" stroke-width="4" stroke-linecap="round"/>
+      <line x1="950" y1="522" x2="1055" y2="522" stroke="rgba(148,163,184,0.25)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="928" cy="478" r="5" fill="#2dd4bf" filter="url(#softGlow)"/>
+      <circle cx="928" cy="500" r="5" fill="#10b981" opacity="0.8"/>
+
+      <!-- floating accent nodes -->
+      <circle cx="600" cy="170" r="4" fill="#2dd4bf" opacity="0.5"/>
+      <circle cx="480" cy="230" r="3" fill="#a7f3d0" opacity="0.4"/>
+      <circle cx="720" cy="230" r="3" fill="#a7f3d0" opacity="0.4"/>
+    </svg>
   </div>
 </header>
 
