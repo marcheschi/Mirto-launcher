@@ -72,7 +72,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
     // jar the manifest value wins (see resolveVersion()).
     // Package-private so UpdateChecker can use it as the single source of truth
     // for the running version when the jar manifest carries no Implementation-Version.
-    static final String FALLBACK_VERSION = "1.7.0";
+    static final String FALLBACK_VERSION = "1.8.0";
     private static final String VERSION = DEVELOP ? "Development " + FALLBACK_VERSION : resolveVersion();
 
     /**
