@@ -12,20 +12,19 @@ import org.w3c.dom.NodeList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.InputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.FileInputStream;
-import java.io.PrintWriter;
-import java.io.FileWriter;
 
 import java.net.URL;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,8 +35,7 @@ import java.util.Map;
  * @author Thaitran,Zi-Min (Jim) Weng
  */
 public class DownloadJNLP {
-    private static final String LOG_FILE = "launcher-debug.log";
-    private static final boolean DEBUG = false;
+    private static final Logger LOG = LoggerFactory.getLogger(DownloadJNLP.class);
     private final File cacheFolder;
     private String host = "";
     private volatile boolean cancelled = false;
@@ -379,21 +377,9 @@ public class DownloadJNLP {
         return java.util.Base64.getEncoder().encodeToString(hashBytes);
     }
 
+    /** Thin alias over SLF4J so existing call sites keep working unchanged. */
     private void log(String message) {
-        if(DEBUG){
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            String logMessage = "[" + timestamp + "] " + message;
-
-            // Print to console
-            System.out.println(logMessage);
-
-            // Append to log file
-            try (PrintWriter out = new PrintWriter(new FileWriter(LOG_FILE, true))) {
-                out.println(logMessage);
-            } catch (IOException e) {
-                System.err.println("ERROR: Could not write to log file - " + e.getMessage());
-            }
-        }
+        LOG.debug(message);
     }
 
     public void cancel() {

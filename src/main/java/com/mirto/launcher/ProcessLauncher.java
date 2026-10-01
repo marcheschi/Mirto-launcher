@@ -2,23 +2,20 @@ package com.mirto.launcher;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.FileWriter;
 import java.net.URLDecoder;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ProcessLauncher {
-    private static final String LOG_FILE = "process-launcher-debug.log";
-    private static final boolean DEBUG = false;
+    private static final Logger LOG = LoggerFactory.getLogger(ProcessLauncher.class);
     
     // Overloaded method for backward compatibility
     public void launch(JavaConfig javaConfig, Credential credential, CodeBase codeBase, boolean isShowConsole) throws Exception {
@@ -153,7 +150,7 @@ public class ProcessLauncher {
         log("🚀 Starting process...");
         // Debug: print the command being executed, with credentials masked — they must
         // never reach stdout (shell history, consoles, redirected logs) in clear text.
-        System.out.println("DEBUG: Executing command: " + String.join(" ", maskCredentials(command, credential)));
+        LOG.info("Executing command: {}", String.join(" ", maskCredentials(command, credential)));
 
         Process targetProcess;
         if(isShowConsole) {
@@ -295,21 +292,9 @@ public class ProcessLauncher {
         }
     }
     
+    /** Thin alias over SLF4J so existing call sites keep working unchanged. */
     private void log(String message) {
-        if(DEBUG){
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            String logMessage = "[ProcessLauncher " + timestamp + "] " + message;
-
-            // Print to console
-            System.out.println(logMessage);
-
-            // Append to log file
-            try (PrintWriter out = new PrintWriter(new FileWriter(LOG_FILE, true))) {
-                out.println(logMessage);
-            } catch (IOException e) {
-                System.err.println("ERROR: Could not write to log file - " + e.getMessage());
-            }
-        }
+        LOG.debug(message);
     }
 
     /** Returns a copy of the command with username/password replaced by "***". */

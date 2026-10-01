@@ -1,6 +1,8 @@
 package com.mirto.launcher;
 
 import org.apache.commons.lang3.SystemUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.net.URLDecoder;
@@ -14,6 +16,8 @@ import java.nio.file.Paths;
 
 
 public class JavaConfig {
+    private static final Logger LOG = LoggerFactory.getLogger(JavaConfig.class);
+
     private String maxHeapSize;
     private String javaHome;
     private String jvmOptions;
@@ -85,7 +89,7 @@ public class JavaConfig {
                 return customPath.toString();
             }
             // If custom path doesn't work, log warning and fall through to bundled
-            System.err.println("Warning: Custom Java home not executable: " + customPath);
+            LOG.warn("Custom Java home not executable: {}", customPath);
         }
 
         // Choose the expected bundled layout

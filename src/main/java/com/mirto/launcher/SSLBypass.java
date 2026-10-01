@@ -1,5 +1,8 @@
 package com.mirto.launcher;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -8,6 +11,7 @@ import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
 
 public class SSLBypass {
+    private static final Logger LOG = LoggerFactory.getLogger(SSLBypass.class);
     private static SSLContext defaultContext;
     private static HostnameVerifier defaultHostnameVerifier;
 
@@ -41,9 +45,9 @@ public class SSLBypass {
             // Disable hostname verification
             HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
 
-            System.out.println("SSL verification disabled. Trusting all certificates.");
+            LOG.warn("SSL verification disabled. Trusting all certificates.");
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("Failed to disable SSL verification", e);
         }
     }
 

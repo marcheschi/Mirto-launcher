@@ -10,6 +10,8 @@ import javafx.util.StringConverter;
 import javafx.application.Application;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -91,8 +93,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
         return FALLBACK_VERSION;
     }
 
-    private static final String LOG_FILE = "BridgeLinkLauncher-debug.log";
-    private static final boolean DEBUG = false;
+    private static final Logger LOG = LoggerFactory.getLogger(BridgeLinkLauncher.class);
     private Image LAUNCHER_ICON;
     private Image BRIDGELINK_ICON;
 
@@ -784,7 +785,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
             appDir = URLDecoder.decode(appDir, StandardCharsets.UTF_8.name()); // Decode path
         } catch (Exception e) {
             appDir = System.getProperty("user.dir"); // Fallback to user.dir if detection fails
-            System.err.println("Failed to determine application directory: " + e.getMessage());
+            LOG.warn("Failed to determine application directory: {}", e.getMessage());
         }
 
         if (startupArgs.length > 0 && StringUtils.isNotBlank(startupArgs[0])) {
@@ -798,7 +799,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
         // directory instead so settings survive and can always be saved.
         if (!isWritableBase(appRoot)) {
             baseDir = new File(System.getProperty("user.home"), ".mirto-launcher");
-            System.out.println("Application folder is not writable (" + appDir + "); storing data in " + baseDir);
+            LOG.warn("Application folder is not writable ({}); storing data in {}", appDir, baseDir);
             migrateDataFolder(new File(appRoot, "data"), new File(baseDir, "data"));
             // Compatibility: pick up settings stored by pre-rename builds (~/.bridgelink-launcher).
             File legacyBase = new File(System.getProperty("user.home"), ".bridgelink-launcher");
@@ -836,9 +837,9 @@ public class BridgeLinkLauncher extends Application implements Progress {
         }
         try {
             copyDirectory(source, target);
-            System.out.println("Migrated existing settings from " + source + " to " + target);
+            LOG.info("Migrated existing settings from {} to {}", source, target);
         } catch (Exception e) {
-            System.err.println("Could not migrate settings from " + source + ": " + e.getMessage());
+            LOG.warn("Could not migrate settings from {}: {}", source, e.getMessage());
         }
     }
 
@@ -2063,21 +2064,9 @@ public class BridgeLinkLauncher extends Application implements Progress {
             log("Error setting up resource icons: " + e.getMessage());
         }
     }
+    /** Thin alias over SLF4J so existing call sites keep working unchanged. */
     private void log(String message) {
-        if(DEBUG){
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            String logMessage = "[" + timestamp + "] " + message;
-
-            // Print to console
-            System.out.println(logMessage);
-
-            // Append to log file
-            try (PrintWriter out = new PrintWriter(new FileWriter(LOG_FILE, true))) {
-                out.println(logMessage);
-            } catch (IOException e) {
-                System.err.println("ERROR: Could not write to log file - " + e.getMessage());
-            }
-        }
+        LOG.debug(message);
     }
     public static void main(String[] args) {
         SSLBypass.disableSSLVerification();
