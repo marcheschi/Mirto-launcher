@@ -113,23 +113,26 @@ public class SshTunnel {
     }
 
     /**
-     * Checks whether the local end of a tunnel is already bound on loopback, so
-     * that {@code ssh -L <port>:...} would fail with "Address already in use".
-     * This performs a real socket bind (I/O) and is therefore kept separate from
-     * the pure syntax check in {@link #validate(String)}.
+     * Checks whether the local end of a tunnel is already bound, so that
+     * {@code ssh -L <port>:...} would fail with "Address already in use". This
+     * performs a real socket bind (I/O) and is therefore kept separate from the
+     * pure syntax check in {@link #validate(String)}.
      *
+     * @param bindHost  the address the tunnel will listen on, or blank to mean ssh's
+     *                  default (loopback); probed so a non-loopback bind is checked
+     *                  against the right interface.
      * @param localPort the port the tunnel will listen on locally
      * @return null when the port appears free, otherwise a human-readable error message.
      */
-    public static String checkLocalPortFree(int localPort) {
+    public static String checkLocalPortFree(String bindHost, int localPort) {
         if (localPort < 1 || localPort > 65535) {
             return "Invalid local port " + localPort + ".";
         }
+        // ssh -L binds to loopback by default; honour an explicit bind address when given.
+        String host = StringUtils.isNotBlank(bindHost) ? bindHost.trim() : "127.0.0.1";
         try (java.net.ServerSocket probe = new java.net.ServerSocket()) {
-            // Bind to loopback: ssh -L listens on localhost by default, so this is
-            // the precise conflict we want to detect. No SO_REUSEADDR, otherwise an
-            // existing listener would not be reported as a conflict.
-            probe.bind(new java.net.InetSocketAddress("127.0.0.1", localPort));
+            // No SO_REUSEADDR, otherwise an existing listener would not be reported as a conflict.
+            probe.bind(new java.net.InetSocketAddress(host, localPort));
             return null; // free
         } catch (java.io.IOException e) {
             return "Local port " + localPort + " is already in use: close the other process using it, or pick a different -L local port.";

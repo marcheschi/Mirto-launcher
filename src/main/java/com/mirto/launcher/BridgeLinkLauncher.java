@@ -1265,7 +1265,7 @@ public class BridgeLinkLauncher extends Application {
 
         // Fail fast if the local end is already bound, so the user gets a clear
         // message instead of a confusing "timed out waiting for the tunnel".
-        String portError = SshTunnel.checkLocalPortFree(tunnel.localPort);
+        String portError = SshTunnel.checkLocalPortFree(tunnel.localHost, tunnel.localPort);
         if (portError != null) {
             showAlert(portError);
             return;
@@ -1602,10 +1602,10 @@ public class BridgeLinkLauncher extends Application {
                 // now with a precise message instead of an opaque failure at launch.
                 String problems = ConnectionsValidator.validate(connections);
                 if (problems != null) {
-                    showAlert("Some saved connections have invalid settings and may fail to launch:\n" + problems);
+                    showStartupWarning("Some saved connections have invalid settings and may fail to launch:\n" + problems);
                 }
             } catch (IOException e) {
-                showAlert("Unable to load connections from file: " + connectionsFile.getAbsolutePath()
+                showStartupWarning("Unable to load connections from file: " + connectionsFile.getAbsolutePath()
                         + ". The file is corrupt or has an unexpected structure.\nError: " + e.getMessage());
             }
         }
@@ -1871,6 +1871,16 @@ public class BridgeLinkLauncher extends Application {
         alert.setHeaderText(err);
         attachOwner(alert);
         alert.showAndWait();
+    }
+
+    /**
+     * Shows a warning that is only known during {@code start()} (e.g. while loading
+     * saved connections). Deferred to the FX event queue so it runs after the main
+     * window exists: the dialog then has an owner and does not block startup as an
+     * orphaned modal shown before any stage is visible.
+     */
+    private void showStartupWarning(String message) {
+        Platform.runLater(() -> showAlert(message));
     }
 
     /**

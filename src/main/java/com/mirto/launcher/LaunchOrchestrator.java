@@ -151,7 +151,7 @@ public final class LaunchOrchestrator {
         }
         SshTunnel tunnel = SshTunnel.parse(command);
         // Fail fast with a clear message instead of letting ssh die on a busy port.
-        String portError = SshTunnel.checkLocalPortFree(tunnel.localPort);
+        String portError = SshTunnel.checkLocalPortFree(tunnel.localHost, tunnel.localPort);
         if (portError != null) {
             throw new IllegalStateException(portError);
         }

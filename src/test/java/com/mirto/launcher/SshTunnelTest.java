@@ -136,11 +136,11 @@ class SshTunnelTest {
 
     @Test
     void occupiedLocalPortIsDetected() throws Exception {
-        // Occupy a loopback port, then verify the checker flags it as in use.
+        // Occupy a loopback port, then verify the checker flags it as in use (blank bind = loopback).
         try (java.net.ServerSocket occupied = new java.net.ServerSocket(0, 50,
                 java.net.InetAddress.getByName("127.0.0.1"))) {
             int busyPort = occupied.getLocalPort();
-            String err = SshTunnel.checkLocalPortFree(busyPort);
+            String err = SshTunnel.checkLocalPortFree("", busyPort);
             assertNotNull(err);
             assertTrue(err.contains(String.valueOf(busyPort)));
         }
@@ -154,12 +154,12 @@ class SshTunnelTest {
                 java.net.InetAddress.getByName("127.0.0.1"))) {
             port = tmp.getLocalPort();
         }
-        assertNull(SshTunnel.checkLocalPortFree(port));
+        assertNull(SshTunnel.checkLocalPortFree("", port));
     }
 
     @Test
     void invalidLocalPortIsRejected() {
-        assertNotNull(SshTunnel.checkLocalPortFree(0));
-        assertNotNull(SshTunnel.checkLocalPortFree(70000));
+        assertNotNull(SshTunnel.checkLocalPortFree("", 0));
+        assertNotNull(SshTunnel.checkLocalPortFree("", 70000));
     }
 }
