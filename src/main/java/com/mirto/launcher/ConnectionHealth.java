@@ -61,8 +61,8 @@ public class ConnectionHealth {
         void onStatusChanged(Connection connection, Status status, String message);
     }
 
-    private static final int CONNECT_TIMEOUT_MS = 5000;
-    private static final int READ_TIMEOUT_MS = 5000;
+    private static final int DEFAULT_CONNECT_TIMEOUT_MS = 5000;
+    private static final int DEFAULT_READ_TIMEOUT_MS = 5000;
     private static final long PERIOD_MINUTES = 5;
     private static final int WORKER_THREADS = 3;
     /** Mirth Connect public endpoint: no auth required, small response. */
@@ -173,7 +173,9 @@ public class ConnectionHealth {
         fire(c, entry);
 
         try {
-            int code = probe(probeUrl, c.isTrustSelfSignedCertificate());
+            int connectTimeoutMs = resolveTimeoutMs(c.getProbeTimeoutMs(), DEFAULT_CONNECT_TIMEOUT_MS);
+            int readTimeoutMs = resolveTimeoutMs(c.getProbeTimeoutMs(), DEFAULT_READ_TIMEOUT_MS);
+            int code = probe(probeUrl, c.isTrustSelfSignedCertificate(), connectTimeoutMs, readTimeoutMs);
             // Any HTTP answer means the endpoint is alive: 200 OK, but also
             // 401 (auth required) or 404 (endpoint moved) prove reachability.
             entry.status = Status.REACHABLE;
@@ -220,8 +222,13 @@ public class ConnectionHealth {
         return a + PROBE_PATH;
     }
 
-    /** Performs the HTTPS/HTTP GET, returning the HTTP status code. */
+    /** Performs the HTTPS/HTTP GET with the default timeouts, returning the HTTP status code. */
     static int probe(String probeUrl, boolean trustSelfSigned) throws IOException {
+        return probe(probeUrl, trustSelfSigned, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_READ_TIMEOUT_MS);
+    }
+
+    /** Performs the HTTPS/HTTP GET with explicit connect/read timeouts (ms), returning the HTTP status code. */
+    static int probe(String probeUrl, boolean trustSelfSigned, int connectTimeoutMs, int readTimeoutMs) throws IOException {
         HttpURLConnection conn;
         URL url = new URL(probeUrl);
         if ("https".equalsIgnoreCase(url.getProtocol())) {
@@ -234,8 +241,8 @@ public class ConnectionHealth {
         } else {
             conn = (HttpURLConnection) url.openConnection();
         }
-        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-        conn.setReadTimeout(READ_TIMEOUT_MS);
+        conn.setConnectTimeout(connectTimeoutMs);
+        conn.setReadTimeout(readTimeoutMs);
         conn.setRequestMethod("GET");
         conn.setInstanceFollowRedirects(true);
         try {
@@ -243,6 +250,14 @@ public class ConnectionHealth {
         } finally {
             conn.disconnect();
         }
+    }
+
+    /**
+     * Resolves the effective probe timeout (ms): a connection's per-connection
+     * override when it is set to a positive value, otherwise the given fallback.
+     */
+    static int resolveTimeoutMs(Integer custom, int fallback) {
+        return (custom != null && custom > 0) ? custom : fallback;
     }
 
     private static final HostnameVerifier TRUST_ALL_HOSTS = (hostname, session) -> true;

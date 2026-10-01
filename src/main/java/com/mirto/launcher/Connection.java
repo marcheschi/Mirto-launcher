@@ -1,5 +1,7 @@
 package com.mirto.launcher;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 public class Connection {
     private String id;
     private String name;
@@ -26,6 +28,9 @@ public class Connection {
     private String notes; // Notes about the connection
     private boolean trustSelfSignedCertificate; // Per-connection opt-in to skip SSL verification
     private String sshTunnelCommand; // Optional "ssh -L ..." command used to jump through an SSL/SSH tunnel
+    /** Per-connection probe timeout in ms (null = use the default). Omitted from JSON when unset. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Integer probeTimeoutMs;
     // Constructors, getters, and setters
     public Connection() {}
 
@@ -56,6 +61,7 @@ public class Connection {
         this.notes = other.notes;
         this.trustSelfSignedCertificate = other.trustSelfSignedCertificate;
         this.sshTunnelCommand = other.sshTunnelCommand;
+        this.probeTimeoutMs = other.probeTimeoutMs;
     }
 
     /**
@@ -165,4 +171,7 @@ public class Connection {
     public void setTrustSelfSignedCertificate(boolean trustSelfSignedCertificate) { this.trustSelfSignedCertificate = trustSelfSignedCertificate; }
     public String getSshTunnelCommand() { return sshTunnelCommand; }
     public void setSshTunnelCommand(String sshTunnelCommand) { this.sshTunnelCommand = sshTunnelCommand; }
+    /** @return the per-connection probe timeout in ms, or {@code null} to use the default. */
+    public Integer getProbeTimeoutMs() { return probeTimeoutMs; }
+    public void setProbeTimeoutMs(Integer probeTimeoutMs) { this.probeTimeoutMs = probeTimeoutMs; }
 }

@@ -55,6 +55,42 @@ class ConnectionStoreTest {
     }
 
     @Test
+    void probeTimeoutRoundTripsAndIsOmittedWhenUnset() throws IOException {
+        ConnectionStore store = store();
+
+        Connection withTimeout = sample("Prod", "secret");
+        withTimeout.setProbeTimeoutMs(1500);
+        Connection withoutTimeout = sample("Dev", "other"); // probeTimeoutMs stays null
+
+        store.save(Arrays.asList(withTimeout, withoutTimeout));
+
+        String fileContent = new String(Files.readAllBytes(store.connectionsFile().toPath()),
+                java.nio.charset.StandardCharsets.UTF_8);
+        // pretty printer may add spaces around the colon -> match tolerantly
+        assertTrue(java.util.regex.Pattern.compile("\"probeTimeoutMs\"\\s*:\\s*1500").matcher(fileContent).find());
+        // only one connection set the field -> exactly one occurrence of the key in the JSON
+        assertEquals(1, countOccurrences(fileContent, "\"probeTimeoutMs\""));
+
+        List<Connection> in = store.load();
+        assertEquals(Integer.valueOf(1500), findByName(in, "Prod").getProbeTimeoutMs());
+        org.junit.jupiter.api.Assertions.assertNull(findByName(in, "Dev").getProbeTimeoutMs());
+    }
+
+    private static Connection findByName(List<Connection> list, String name) {
+        return list.stream().filter(c -> name.equals(c.getName())).findFirst()
+                .orElseThrow(() -> new AssertionError("connection not found: " + name));
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0, idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) != -1) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
+    }
+
+    @Test
     void passwordsAreNotStoredInClearText() throws IOException {
         ConnectionStore store = store();
         store.save(Arrays.asList(sample("Prod", "plaintext-secret")));

@@ -82,6 +82,15 @@ class ConnectionHealthTest {
                 () -> ConnectionHealth.probe("http://localhost:1" + ConnectionHealth.PROBE_PATH, false));
     }
 
+    @Test
+    void perConnectionTimeoutOverridesDefaultWhenPositive() {
+        assertEquals(1500, ConnectionHealth.resolveTimeoutMs(1500, 5000));
+        // null / zero / negative all fall back to the default
+        assertEquals(5000, ConnectionHealth.resolveTimeoutMs(null, 5000));
+        assertEquals(5000, ConnectionHealth.resolveTimeoutMs(0, 5000));
+        assertEquals(5000, ConnectionHealth.resolveTimeoutMs(-100, 5000));
+    }
+
     // ------------------------------------------------------------- service api
 
     @Test
