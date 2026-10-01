@@ -121,7 +121,10 @@ Exec=mirto-launcher
 Icon=__ICON__
 Terminal=false
 Categories=Development;Network;
-StartupWMClass=MirtoLauncher
+# Must match the WM_CLASS JavaFX actually reports for this app (the main class),
+# otherwise the dock/alt-tab cannot associate the running window with this entry
+# and falls back to a generic icon + raw class name.
+StartupWMClass=com.mirto.launcher.BridgeLinkLauncher
 DESKTOP
 chmod 644 "$DESKTOP_DIR/mirto-launcher.desktop"
 

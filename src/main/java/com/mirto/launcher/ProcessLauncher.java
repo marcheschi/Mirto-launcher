@@ -84,6 +84,7 @@ public class ProcessLauncher {
         if("Java 17".equals(javaConfig.getJavaHome())){
             command.add("--add-modules=java.sql.rowset");
             command.add("--add-exports=java.base/com.sun.crypto.provider=ALL-UNNAMED");
+            command.add("--add-exports=java.base/sun.security.action=ALL-UNNAMED");
             command.add("--add-exports=java.base/sun.security.provider=ALL-UNNAMED");
             command.add("--add-opens=java.base/java.lang=ALL-UNNAMED");
             command.add("--add-opens=java.base/java.lang.reflect=ALL-UNNAMED");

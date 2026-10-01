@@ -113,7 +113,10 @@ Exec=mirto-launcher
 Icon=$APP
 Terminal=false
 Categories=Development;Network;
-StartupWMClass=MirtoLauncher
+# Must match the WM_CLASS JavaFX actually reports (the main class), otherwise the
+# dock/alt-tab cannot associate the running window with this entry and shows a
+# generic icon + raw class name.
+StartupWMClass=com.mirto.launcher.BridgeLinkLauncher
 X-AppImage-Version=$VERSION
 DESKTOP
 
