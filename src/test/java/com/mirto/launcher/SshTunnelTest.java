@@ -133,4 +133,33 @@ class SshTunnelTest {
         assertTrue(SshTunnel.validate("ssh -L 1:h:1 j") == null);
         assertFalse(SshTunnel.validate("ssh -L 1:h:1 j") != null);
     }
+
+    @Test
+    void occupiedLocalPortIsDetected() throws Exception {
+        // Occupy a loopback port, then verify the checker flags it as in use.
+        try (java.net.ServerSocket occupied = new java.net.ServerSocket(0, 50,
+                java.net.InetAddress.getByName("127.0.0.1"))) {
+            int busyPort = occupied.getLocalPort();
+            String err = SshTunnel.checkLocalPortFree(busyPort);
+            assertNotNull(err);
+            assertTrue(err.contains(String.valueOf(busyPort)));
+        }
+    }
+
+    @Test
+    void freeLocalPortIsAccepted() throws Exception {
+        // Grab an ephemeral port, release it, then verify the checker sees it as free.
+        int port;
+        try (java.net.ServerSocket tmp = new java.net.ServerSocket(0, 50,
+                java.net.InetAddress.getByName("127.0.0.1"))) {
+            port = tmp.getLocalPort();
+        }
+        assertNull(SshTunnel.checkLocalPortFree(port));
+    }
+
+    @Test
+    void invalidLocalPortIsRejected() {
+        assertNotNull(SshTunnel.checkLocalPortFree(0));
+        assertNotNull(SshTunnel.checkLocalPortFree(70000));
+    }
 }

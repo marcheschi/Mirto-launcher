@@ -1262,6 +1262,15 @@ public class BridgeLinkLauncher extends Application {
         }
 
         final SshTunnel tunnel = SshTunnel.parse(cmd);
+
+        // Fail fast if the local end is already bound, so the user gets a clear
+        // message instead of a confusing "timed out waiting for the tunnel".
+        String portError = SshTunnel.checkLocalPortFree(tunnel.localPort);
+        if (portError != null) {
+            showAlert(portError);
+            return;
+        }
+
         sshTunnelTestButton.setDisable(true);
         Thread t = new Thread(() -> {
             String message;

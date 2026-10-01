@@ -113,6 +113,30 @@ public class SshTunnel {
     }
 
     /**
+     * Checks whether the local end of a tunnel is already bound on loopback, so
+     * that {@code ssh -L <port>:...} would fail with "Address already in use".
+     * This performs a real socket bind (I/O) and is therefore kept separate from
+     * the pure syntax check in {@link #validate(String)}.
+     *
+     * @param localPort the port the tunnel will listen on locally
+     * @return null when the port appears free, otherwise a human-readable error message.
+     */
+    public static String checkLocalPortFree(int localPort) {
+        if (localPort < 1 || localPort > 65535) {
+            return "Invalid local port " + localPort + ".";
+        }
+        try (java.net.ServerSocket probe = new java.net.ServerSocket()) {
+            // Bind to loopback: ssh -L listens on localhost by default, so this is
+            // the precise conflict we want to detect. No SO_REUSEADDR, otherwise an
+            // existing listener would not be reported as a conflict.
+            probe.bind(new java.net.InetSocketAddress("127.0.0.1", localPort));
+            return null; // free
+        } catch (java.io.IOException e) {
+            return "Local port " + localPort + " is already in use: close the other process using it, or pick a different -L local port.";
+        }
+    }
+
+    /**
      * Parses an already-validated command into a tunnel object. Callers must
      * run {@link #validate(String)} first; this method assumes the syntax is
      * correct and never throws on malformed input.

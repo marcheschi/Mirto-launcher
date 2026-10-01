@@ -149,6 +149,12 @@ public final class LaunchOrchestrator {
         if (error != null) {
             throw new IllegalStateException("Invalid SSH Tunnel command: " + error);
         }
-        return SshTunnel.parse(command);
+        SshTunnel tunnel = SshTunnel.parse(command);
+        // Fail fast with a clear message instead of letting ssh die on a busy port.
+        String portError = SshTunnel.checkLocalPortFree(tunnel.localPort);
+        if (portError != null) {
+            throw new IllegalStateException(portError);
+        }
+        return tunnel;
     }
 }
