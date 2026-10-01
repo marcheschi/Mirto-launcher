@@ -1446,7 +1446,8 @@ public class BridgeLinkLauncher extends Application implements Progress {
 
         if (file != null) {
             try {
-                String content = new String(Files.readAllBytes(file.toPath()));
+                // Explicit UTF-8: the platform default charset must not affect import.
+                String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
                 ObjectMapper objectMapper = new ObjectMapper();
                 List<Connection> importedConnections = objectMapper.readValue(content,
                         new TypeReference<List<Connection>>() {});

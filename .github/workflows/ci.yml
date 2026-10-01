@@ -17,8 +17,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Run unit tests
+      - name: Run unit tests (JaCoCo agent + report bound to the test phase)
         run: mvn -B test
+
+      - name: Static analysis (SpotBugs, High threshold)
+        run: mvn -B spotbugs:check
 
       - name: Package (windows-release profile)
         run: mvn -B -Pwindows-release -DskipTests package
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco
