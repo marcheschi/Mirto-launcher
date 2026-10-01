@@ -6,7 +6,7 @@
 
     <groupId>com.mirto</groupId>
     <artifactId>mirto-launcher</artifactId>
-    <version>1.9.1</version>
+    <version>1.9.2</version>
 
     <properties>
         <!-- JavaFX 17 requires JDK 11+ at runtime anyway; compile for 17 so the
