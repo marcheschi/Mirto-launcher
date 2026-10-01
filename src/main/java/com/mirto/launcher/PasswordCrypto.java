@@ -1,5 +1,6 @@
 package com.mirto.launcher;
 
+import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -28,8 +29,10 @@ import java.util.Optional;
  *       machine-derived key, in a hidden file readable only by the current
  *       user.</li>
  *   <li>The machine-derived fallback key combines the user name, OS name and
- *       the JVM installation path, so the data key cannot be decrypted from a
- *       different machine/user out of the box.</li>
+ *       the JVM installation path (PBKDF2-SHA256, 210k iterations), so the data
+ *       key cannot be decrypted from a different machine/user out of the box.
+ *       Key files written with the previous 65k-iteration derivation keep
+ *       decrypting and are transparently re-encrypted on first use.</li>
  *   <li>Passwords are stored base64-encoded as {@code iv:ciphertext}. Any value
  *       that does not carry the {@link #PREFIX} marker is treated as legacy
  *       plain text: it still works (backward compatibility) but gets re-encrypted
@@ -56,9 +59,17 @@ public final class PasswordCrypto {
     private static final int KEY_SIZE_BITS = 256;
     private static final int IV_SIZE_BYTES = 12;      // recommended for AES-GCM
     private static final int TAG_SIZE_BITS = 128;
-    private static final int PBKDF2_ITERATIONS = 65536;
+    /** Iterations for newly written key files (OWASP 2023 minimum for PBKDF2-SHA256). */
+    private static final int PBKDF2_ITERATIONS = 210_000;
+    /** Iterations used before the hardening: legacy key files must keep decrypting. */
+    private static final int LEGACY_PBKDF2_ITERATIONS = 65_536;
 
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    // The master keys are deterministic per machine/user, so derive them once and
+    // cache: loadOrCreateKey() runs on every password operation.
+    private static volatile SecretKey cachedCurrentMaster;
+    private static volatile SecretKey cachedLegacyMaster;
 
     private PasswordCrypto() {
     }
@@ -92,9 +103,8 @@ public final class PasswordCrypto {
             System.arraycopy(combined, 0, iv, 0, IV_SIZE_BYTES);
             System.arraycopy(combined, IV_SIZE_BYTES, cipherText, 0, cipherText.length);
 
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, loadOrCreateKey(keyFile), new GCMParameterSpec(TAG_SIZE_BITS, iv));
-            return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
+            byte[] plain = gcmDecrypt(loadOrCreateKey(keyFile), iv, cipherText);
+            return new String(plain, StandardCharsets.UTF_8);
         } catch (GeneralSecurityException | IOException | IllegalArgumentException e) {
             throw new IllegalStateException("Unable to decrypt stored password: " + e.getMessage(), e);
         }
@@ -112,17 +122,7 @@ public final class PasswordCrypto {
             return plain; // already in encrypted form
         }
         try {
-            byte[] iv = new byte[IV_SIZE_BYTES];
-            RANDOM.nextBytes(iv);
-
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, loadOrCreateKey(keyFile), new GCMParameterSpec(TAG_SIZE_BITS, iv));
-            byte[] cipherText = cipher.doFinal(plain.getBytes(StandardCharsets.UTF_8));
-
-            byte[] combined = new byte[iv.length + cipherText.length];
-            System.arraycopy(iv, 0, combined, 0, iv.length);
-            System.arraycopy(cipherText, 0, combined, iv.length, cipherText.length);
-
+            byte[] combined = gcmEncrypt(loadOrCreateKey(keyFile), plain.getBytes(StandardCharsets.UTF_8));
             return PREFIX + ENCRYPTED_PREFIX + Base64.getEncoder().encodeToString(combined);
         } catch (GeneralSecurityException | IOException e) {
             throw new IllegalStateException("Unable to encrypt password: " + e.getMessage(), e);
@@ -168,14 +168,38 @@ public final class PasswordCrypto {
                 String stored = new String(Files.readAllBytes(keyFile), StandardCharsets.UTF_8).trim();
                 String payload = stored.substring(PREFIX.length());
                 byte[] combined = Base64.getDecoder().decode(payload.substring(ENCRYPTED_PREFIX.length()));
+                if (combined.length <= IV_SIZE_BYTES) {
+                    throw new IOException("Invalid data-key payload length in " + keyFile);
+                }
                 byte[] iv = new byte[IV_SIZE_BYTES];
                 byte[] cipherText = new byte[combined.length - IV_SIZE_BYTES];
                 System.arraycopy(combined, 0, iv, 0, IV_SIZE_BYTES);
                 System.arraycopy(combined, IV_SIZE_BYTES, cipherText, 0, cipherText.length);
-                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                cipher.init(Cipher.DECRYPT_MODE, master, new GCMParameterSpec(TAG_SIZE_BITS, iv));
-                byte[] keyBytes = cipher.doFinal(cipherText);
+
+                // Try the hardened master first; key files written before the PBKDF2
+                // hardening only decrypt with the legacy iteration count. A wrong key
+                // fails cleanly via the GCM authentication tag (AEADBadTagException).
+                byte[] keyBytes;
+                boolean wasLegacy = false;
+                try {
+                    keyBytes = gcmDecrypt(master, iv, cipherText);
+                } catch (AEADBadTagException e) {
+                    keyBytes = gcmDecrypt(deriveMasterKey(LEGACY_PBKDF2_ITERATIONS), iv, cipherText);
+                    wasLegacy = true;
+                }
                 SecretKey dataKey = new SecretKeySpec(keyBytes, 0, KEY_SIZE_BITS / 8, "AES");
+
+                // One-time upgrade: re-encrypt the data key under the hardened master.
+                if (wasLegacy) {
+                    try {
+                        Files.write(keyFile, (PREFIX + ENCRYPTED_PREFIX
+                                + Base64.getEncoder().encodeToString(gcmEncrypt(master, keyBytes)))
+                                .getBytes(StandardCharsets.UTF_8));
+                        restrictPermissions(keyFile);
+                    } catch (IOException | GeneralSecurityException ignored) {
+                        // Non-fatal: the legacy file keeps working until the next write.
+                    }
+                }
 
                 // Migrate to the OS keystore when available (one-way upgrade).
                 if (KeyringStore.isAvailable() && KeyringStore.save(keyBytes)) {
@@ -197,41 +221,75 @@ public final class PasswordCrypto {
             savedToKeyring = KeyringStore.save(keyBytes);
         }
         if (!savedToKeyring) {
-        byte[] iv = new byte[IV_SIZE_BYTES];
-        RANDOM.nextBytes(iv);
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, master, new GCMParameterSpec(TAG_SIZE_BITS, iv));
-        byte[] cipherText = cipher.doFinal(keyBytes);
-        byte[] combined = new byte[iv.length + cipherText.length];
-        System.arraycopy(iv, 0, combined, 0, iv.length);
-        System.arraycopy(cipherText, 0, combined, iv.length, cipherText.length);
-
-        if (parent != null) {
-            Files.createDirectories(parent);
-        }
-        Files.write(keyFile, (PREFIX + ENCRYPTED_PREFIX + Base64.getEncoder().encodeToString(combined))
-                .getBytes(StandardCharsets.UTF_8));
-        restrictPermissions(keyFile);
+            byte[] combined = gcmEncrypt(master, keyBytes);
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.write(keyFile, (PREFIX + ENCRYPTED_PREFIX + Base64.getEncoder().encodeToString(combined))
+                    .getBytes(StandardCharsets.UTF_8));
+            restrictPermissions(keyFile);
         }
         return dataKey;
     }
 
     /**
      * Derives a machine-bound key (PBKDF2) from non-secret environment facts.
+     * Cached per iteration count: the inputs never change within a JVM run and
+     * loadOrCreateKey() is invoked on every password operation.
      */
-    private static SecretKey deriveMasterKey() throws GeneralSecurityException {
+    private static synchronized SecretKey deriveMasterKey(int iterations) throws GeneralSecurityException {
+        SecretKey cached = (iterations == LEGACY_PBKDF2_ITERATIONS) ? cachedLegacyMaster : cachedCurrentMaster;
+        if (cached != null) {
+            return cached;
+        }
         String material = System.getProperty("user.name", "") + "|"
                 + System.getProperty("os.name", "") + "|"
                 + System.getProperty("java.home", "");
         PBEKeySpec spec = new PBEKeySpec(material.toCharArray(),
                 "BridgeLinkLauncher/salt/v1".getBytes(StandardCharsets.UTF_8),
-                PBKDF2_ITERATIONS, KEY_SIZE_BITS);
+                iterations, KEY_SIZE_BITS);
         try {
             SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            return new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES");
+            SecretKey key = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES");
+            if (iterations == LEGACY_PBKDF2_ITERATIONS) {
+                cachedLegacyMaster = key;
+            } else {
+                cachedCurrentMaster = key;
+            }
+            return key;
         } finally {
             spec.clearPassword();
         }
+    }
+
+    /** Convenience overload: the current (hardened) master key. */
+    private static SecretKey deriveMasterKey() throws GeneralSecurityException {
+        return deriveMasterKey(PBKDF2_ITERATIONS);
+    }
+
+    /** Visible for testing: derives the legacy (pre-hardening) master key. */
+    static SecretKey legacyMasterKeyForTesting() throws GeneralSecurityException {
+        return deriveMasterKey(LEGACY_PBKDF2_ITERATIONS);
+    }
+
+    /** AES-GCM decrypt; a wrong key fails cleanly via the authentication tag. */
+    private static byte[] gcmDecrypt(SecretKey key, byte[] iv, byte[] cipherText) throws GeneralSecurityException {
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_SIZE_BITS, iv));
+        return cipher.doFinal(cipherText);
+    }
+
+    /** AES-GCM encrypt with a fresh random IV; returns {@code iv || ciphertext}. */
+    private static byte[] gcmEncrypt(SecretKey key, byte[] plain) throws GeneralSecurityException {
+        byte[] iv = new byte[IV_SIZE_BYTES];
+        RANDOM.nextBytes(iv);
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(TAG_SIZE_BITS, iv));
+        byte[] cipherText = cipher.doFinal(plain);
+        byte[] combined = new byte[iv.length + cipherText.length];
+        System.arraycopy(iv, 0, combined, 0, iv.length);
+        System.arraycopy(cipherText, 0, combined, iv.length, cipherText.length);
+        return combined;
     }
 
     /**
