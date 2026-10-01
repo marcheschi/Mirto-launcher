@@ -3,18 +3,18 @@ An open source Admin Launcher for BridgeLink (and OSS Mirth Connect)
 
 ## Download
 
-Latest release: **[v1.9.0](https://github.com/marcheschi/Mirto-launcher/releases/tag/v1.9.0)**
+Latest release: **[v1.9.1](https://github.com/marcheschi/Mirto-launcher/releases/tag/v1.9.1)**
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows x64 | [MirtoLauncher-1.9.0-windows-x64-setup.exe](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.0/MirtoLauncher-1.9.0-windows-x64-setup.exe) | Installer with **embedded Java 17 + JavaFX** — no Java installation required |
-| Linux (Debian/Ubuntu) | [mirto-launcher_1.9.0_amd64.deb](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.0/mirto-launcher_1.9.0_amd64.deb) | .deb package with **embedded Java 17 + JavaFX** — no Java installation required |
-| Linux (any distro) | [Mirto-Launcher-1.9.0-x86_64.AppImage](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.0/Mirto-Launcher-1.9.0-x86_64.AppImage) | Portable AppImage with **embedded Java 17 + JavaFX** — `chmod +x` and run |
-| macOS (Intel) | [Mirto-Launcher-1.9.0-macos_x86_64.dmg](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.0/Mirto-Launcher-1.9.0-macos_x86_64.dmg) | Drag-to-install `.app` with **embedded Java 17 + JavaFX** — no Java installation required |
-| macOS (Apple Silicon) | [Mirto-Launcher-1.9.0-macos_arm64.dmg](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.0/Mirto-Launcher-1.9.0-macos_arm64.dmg) | Drag-to-install `.app` with **embedded Java 17 + JavaFX** — no Java installation required |
-| Cross-platform | [mirto-launcher-1.9.0.jar](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.0/mirto-launcher-1.9.0.jar) | Executable jar, run with any JDK 17+: `java -jar mirto-launcher-1.9.0.jar` |
-| Linux | [bridgelink-starter.sh](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.0/bridgelink-starter.sh) | One-shot starter: runs the jar and auto-provisions the JavaFX JRE |
-| Linux | [setup-jre.sh](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.0/setup-jre.sh) | Provisions a Zulu FX 17 runtime into `./jre` (idempotent) |
+| Windows x64 | [MirtoLauncher-1.9.1-windows-x64-setup.exe](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.1/MirtoLauncher-1.9.1-windows-x64-setup.exe) | Installer with **embedded Java 17 + JavaFX** — no Java installation required |
+| Linux (Debian/Ubuntu) | [mirto-launcher_1.9.1_amd64.deb](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.1/mirto-launcher_1.9.1_amd64.deb) | .deb package with **embedded Java 17 + JavaFX** — no Java installation required |
+| Linux (any distro) | [Mirto-Launcher-1.9.1-x86_64.AppImage](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.1/Mirto-Launcher-1.9.1-x86_64.AppImage) | Portable AppImage with **embedded Java 17 + JavaFX** — `chmod +x` and run |
+| macOS (Intel) | [Mirto-Launcher-1.9.1-macos_x86_64.dmg](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.1/Mirto-Launcher-1.9.1-macos_x86_64.dmg) | Drag-to-install `.app` with **embedded Java 17 + JavaFX** — no Java installation required |
+| macOS (Apple Silicon) | [Mirto-Launcher-1.9.1-macos_arm64.dmg](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.1/Mirto-Launcher-1.9.1-macos_arm64.dmg) | Drag-to-install `.app` with **embedded Java 17 + JavaFX** — no Java installation required |
+| Cross-platform | [mirto-launcher-1.9.1.jar](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.1/mirto-launcher-1.9.1.jar) | Executable jar, run with any JDK 17+: `java -jar mirto-launcher-1.9.1.jar` |
+| Linux | [bridgelink-starter.sh](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.1/bridgelink-starter.sh) | One-shot starter: runs the jar and auto-provisions the JavaFX JRE |
+| Linux | [setup-jre.sh](https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.1/setup-jre.sh) | Provisions a Zulu FX 17 runtime into `./jre` (idempotent) |
 
 Upgrading from v1.7.x? Nothing to do: the data folder (`~/.bridgelink-launcher` → `~/.mirto-launcher`),
 the encryption key (`.bridgekey` → `.mirtokey`) and the OS keyring entry are migrated automatically on first launch.

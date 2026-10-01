@@ -57,6 +57,16 @@ class ConnectionsValidatorTest {
     }
 
     @Test
+    void bareHostAndPortWithoutSchemeAreAccepted() {
+        // The launcher normalizes scheme-less addresses at launch time, so they are valid.
+        List<Connection> ok = Arrays.asList(
+                conn("Prod", "mirth.example.org:8443", null),
+                conn("Local", "localhost:8080", null),
+                conn("Ip", "192.168.1.5:8443", null));
+        assertNull(ConnectionsValidator.validate(ok));
+    }
+
+    @Test
     void invalidHeapSizesAreReported() {
         List<Connection> bad = Arrays.asList(
                 conn("A", "https://mirth.example.org:8443", "512 mb"), // space breaks -Xmx

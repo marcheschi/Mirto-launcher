@@ -70,7 +70,7 @@ public class BridgeLinkLauncher extends Application {
     // jar the manifest value wins (see resolveVersion()).
     // Package-private so UpdateChecker can use it as the single source of truth
     // for the running version when the jar manifest carries no Implementation-Version.
-    static final String FALLBACK_VERSION = "1.9.0";
+    static final String FALLBACK_VERSION = "1.9.1";
     private static final String VERSION = DEVELOP ? "Development " + FALLBACK_VERSION : resolveVersion();
 
     /**
@@ -1869,8 +1869,19 @@ public class BridgeLinkLauncher extends Application {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
         alert.setHeaderText(err);
-        alert.initOwner(primaryStage);
+        attachOwner(alert);
         alert.showAndWait();
+    }
+
+    /**
+     * Sets the dialog owner only when the primary stage is ready (has a scene).
+     * Alerts raised during {@code start()} run before {@code setScene}, and calling
+     * {@code initOwner} on a scene-less stage throws an NPE in JavaFX.
+     */
+    private void attachOwner(Alert alert) {
+        if (primaryStage != null && primaryStage.getScene() != null) {
+            alert.initOwner(primaryStage);
+        }
     }
 
     private void showErrorDialog(Throwable t, String header) {
@@ -1883,7 +1894,7 @@ public class BridgeLinkLauncher extends Application {
         TextArea textArea = new TextArea(ExceptionUtils.getStackTrace(t));
         textArea.setEditable(false);
         alert.getDialogPane().setContent(textArea);
-        alert.initOwner(this.primaryStage);
+        attachOwner(alert);
         alert.show();
     }
 

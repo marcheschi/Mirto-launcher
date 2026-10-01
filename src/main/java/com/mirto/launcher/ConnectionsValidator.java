@@ -18,6 +18,8 @@ public final class ConnectionsValidator {
 
     /** Accepted heap sizes: digits followed by m/g, e.g. "512m", "2g". */
     private static final Pattern HEAP_SIZE = Pattern.compile("^\\d+[mg]$", Pattern.CASE_INSENSITIVE);
+    /** Bare host or host:port (no scheme), which the launcher normalizes at launch time. */
+    private static final Pattern BARE_HOST = Pattern.compile("^[A-Za-z0-9_.-]+(?::\\d{1,5})?$");
 
     private ConnectionsValidator() {
     }
@@ -56,12 +58,18 @@ public final class ConnectionsValidator {
         if (StringUtils.isBlank(address)) {
             return false;
         }
+        String a = address.trim();
+        // An explicit http(s) URL with a host...
         try {
-            URI uri = new URI(address.trim());
+            URI uri = new URI(a);
             String scheme = uri.getScheme();
-            return ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) && uri.getHost() != null;
-        } catch (URISyntaxException e) {
-            return false;
+            if (("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) && uri.getHost() != null) {
+                return true;
+            }
+        } catch (URISyntaxException ignored) {
+            // fall through to the bare host:port check below
         }
+        // ...or a bare host / host:port, which the launcher normalizes at launch time.
+        return BARE_HOST.matcher(a).matches();
     }
 }
