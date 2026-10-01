@@ -9,12 +9,14 @@
     <version>1.8.1</version>
 
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <!-- JavaFX 17 requires JDK 11+ at runtime anyway; compile for 17 so the
+             bytecode matches the minimum supported runtime (Zulu FX 17). -->
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <commons-lang3.version>3.12.0</commons-lang3.version>
-        <jackson-databind.version>2.13.3</jackson-databind.version>
+        <!-- 2.17.x: fixes deserialization CVEs present in the previous 2.13 line -->
+        <jackson-databind.version>2.17.2</jackson-databind.version>
         <javafx.version>17.0.10</javafx.version>
         <junit.version>5.10.2</junit.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
@@ -58,8 +60,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <release>17</release>
                 </configuration>
             </plugin>
 
