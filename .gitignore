@@ -11,6 +11,9 @@ dependency-reduced-pom.xml
 data/
 cache/
 
+# Logback rolling log file (runtime artifact)
+mirto-launcher.log*
+
 # Windows release build outputs (assembled app, embedded JRE, installer)
 build/windows/app/
 build/windows/jre/

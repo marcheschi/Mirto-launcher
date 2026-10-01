@@ -51,16 +51,12 @@ import javafx.scene.paint.Color;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -68,7 +64,7 @@ import java.util.ArrayList;
 import java.util.UUID;
 import java.util.Optional;
 
-public class BridgeLinkLauncher extends Application implements Progress {
+public class BridgeLinkLauncher extends Application {
     private static final boolean DEVELOP = false;
     // Keep in sync with the <version> in pom.xml; when running from a packaged
     // jar the manifest value wins (see resolveVersion()).
@@ -125,7 +121,9 @@ public class BridgeLinkLauncher extends Application implements Progress {
     private CheckBox closeWindowCheckBox;
     private TextField sshTunnelTextField;
     private Button sshTunnelTestButton;
-    private volatile Process tunnelProcess; // running ssh -N process, if any
+    // Shared tunnel lifecycle (launch flow + "Test" button) and the launch sequence.
+    private final TunnelManager tunnelManager = new TunnelManager();
+    private final LaunchOrchestrator launchOrchestrator = new LaunchOrchestrator(tunnelManager);
     private Button newButton;
     private Button saveButton;
     private Button duplicateButton;
@@ -134,8 +132,6 @@ public class BridgeLinkLauncher extends Application implements Progress {
     private Button exportButton;
     private Button revertButton;
     private CheckBox trustSelfSignedCheckBox;
-    private Thread launchThread;
-    private volatile DownloadJNLP currentDownload;
     private volatile boolean isLaunching = false;
     private Stage primaryStage;
     private final String[] startupArgs; // raw application arguments (data dir override)
@@ -1152,73 +1148,59 @@ public class BridgeLinkLauncher extends Application implements Progress {
         progressIndicator.setProgress(-1.0);
         cancelButton.setDisable(false);
 
-        launchThread = new Thread(() -> {
-            try {
-                String host = addressTextField.getText();
+        // Snapshot the form state up front: the orchestrator runs on its own thread
+        // and must not read live controls after launch has started.
+        String customJavaHome = customJavaRadio.isSelected() ? customJavaTextField.getText() : null;
+        JavaConfig javaConfig = new JavaConfig(heapSizeCombo.getValue().toString(), this.bundledJavaCombo.getValue().toString(), this.jvmOptionsTextField.getText(), customJavaHome);
+        Credential credential = new Credential(StringUtils.trim(usernameTextField.getText()), StringUtils.trim(passwordField.getText()));
 
-                // Optional SSH tunnel: open it first, then route the download
-                // through the local end of the tunnel.
-                SshTunnel tunnel = null;
-                String tunnelCmdText = sshTunnelTextField.getText().trim();
-                if (!tunnelCmdText.isEmpty()) {
-                    String error = SshTunnel.validate(tunnelCmdText);
-                    if (error != null) {
-                        throw new IllegalStateException("Invalid SSH Tunnel command: " + error);
-                    }
-                    tunnel = parseTunnel(tunnelCmdText);
-                    final SshTunnel activeTunnel = tunnel;
-                    updateProgressText("Opening SSH tunnel on localhost:" + activeTunnel.localPort + "...");
-                    startTunnelProcess(activeTunnel);
-                    host = activeTunnel.rewriteUrl(host);
-                    final String tunneledHost = host;
-                    Platform.runLater(() -> {
-                        progressText.setText("Launching " + tunneledHost + " (via SSH tunnel)");
-                        log("SSH tunnel active: " + String.join(" ", activeTunnel.buildCommand()));
-                    });
+        // Icon path and connection name for the selected connection (UI concern).
+        TreeItem<Connection> selectedItem = connectionsTreeView.getSelectionModel().getSelectedItem();
+        String iconPath = null;
+        String connectionName = null;
+        if (selectedItem != null && selectedItem.getValue() != null && selectedItem.getValue().getAddress() != null) {
+            Connection selectedConnection = selectedItem.getValue();
+            connectionName = selectedConnection.getName();
+
+            if (selectedConnection.getIcon() != null && !selectedConnection.getIcon().trim().isEmpty()) {
+                String iconFileName = selectedConnection.getIcon();
+                if (iconFileName.startsWith("resource:")) {
+                    // Remove the "resource:" prefix and use the filename directly from data/icons
+                    iconFileName = iconFileName.substring("resource:".length());
                 }
 
-                updateProgressText("Downloading JNLP from " + host);
-
-                DownloadJNLP download = new DownloadJNLP(host, cacheFolder, clearCacheCheckBox.isSelected());
-                currentDownload = download;
-
-                String customJavaHome = customJavaRadio.isSelected() ? customJavaTextField.getText() : null;
-                JavaConfig javaConfig = new JavaConfig(heapSizeCombo.getValue().toString(), this.bundledJavaCombo.getValue().toString(), this.jvmOptionsTextField.getText(), customJavaHome);
-                Credential credential = new Credential(StringUtils.trim(usernameTextField.getText()), StringUtils.trim(passwordField.getText()));
-                CodeBase codeBase = download.handle(this);
-                currentDownload = null;
-
-                ProcessLauncher process = new ProcessLauncher();
-                updateProgressText("Starting application...");
-
-                // Get icon path and connection name for the selected connection
-                TreeItem<Connection> selectedItem = connectionsTreeView.getSelectionModel().getSelectedItem();
-                String iconPath = null;
-                String connectionName = null;
-                if (selectedItem != null && selectedItem.getValue() != null && selectedItem.getValue().getAddress() != null) {
-                    Connection selectedConnection = selectedItem.getValue();
-                    connectionName = selectedConnection.getName();
-
-                    if (selectedConnection.getIcon() != null && !selectedConnection.getIcon().trim().isEmpty()) {
-                        String iconFileName = selectedConnection.getIcon();
-                        if (iconFileName.startsWith("resource:")) {
-                            // Remove the "resource:" prefix and use the filename directly from data/icons
-                            iconFileName = iconFileName.substring("resource:".length());
-                        }
-
-                        // All icons (resource and user-uploaded) are now in data/icons folder
-                        File iconFile = new File(new File(dataFolder, "icons"), iconFileName);
-                        if (iconFile.exists()) {
-                            iconPath = iconFile.getAbsolutePath();
-                        }
-                    }
+                // All icons (resource and user-uploaded) are now in data/icons folder
+                File iconFile = new File(new File(dataFolder, "icons"), iconFileName);
+                if (iconFile.exists()) {
+                    iconPath = iconFile.getAbsolutePath();
                 }
+            }
+        }
 
-                process.launch(javaConfig, credential, codeBase, showConsoleCheckBox.isSelected(), iconPath, connectionName);
+        LaunchOrchestrator.Request request = new LaunchOrchestrator.Request(
+                addressTextField.getText(),
+                sshTunnelTextField.getText().trim(),
+                cacheFolder,
+                clearCacheCheckBox.isSelected(),
+                javaConfig,
+                credential,
+                showConsoleCheckBox.isSelected(),
+                iconPath,
+                connectionName);
 
-                updateProgressText("Application launched successfully");
+        launchOrchestrator.start(request, new LaunchOrchestrator.Listener() {
+            @Override
+            public void status(String message) {
+                Platform.runLater(() -> progressText.setText(message));
+            }
 
-                Thread.sleep(1000);
+            @Override
+            public void bar(double value) {
+                Platform.runLater(() -> progressBar.setProgress(value));
+            }
+
+            @Override
+            public void launched() {
                 Platform.runLater(() -> {
                     if (closeWindowCheckBox.isSelected()) {
                         primaryStage.close();
@@ -1226,150 +1208,35 @@ public class BridgeLinkLauncher extends Application implements Progress {
                         resetUI();
                     }
                 });
+            }
 
-            } catch (InterruptedException e) {
+            @Override
+            public void cancelled() {
                 Platform.runLater(() -> {
                     progressText.setText("Launch cancelled");
                     resetUI();
                 });
-            } catch (Exception e ) {
-                // Failed to launch: do not leave an orphan tunnel behind
-                stopTunnelProcess();
+            }
+
+            @Override
+            public void failed(Throwable error) {
                 Platform.runLater(() -> {
-                    showErrorDialog(e, "Launch Failed");
+                    showErrorDialog(error, "Launch Failed");
                     resetUI();
                 });
-            } finally {
-                currentDownload = null;
             }
-        }, "Launch Thread");
-        launchThread.start();
+        });
     }
 
     private void cancelLaunch() {
-        if (launchThread != null && launchThread.isAlive()) {
-            Platform.runLater(() -> progressText.setText("Cancelling..."));
-            launchThread.interrupt();
-            if (currentDownload != null) {
-                currentDownload.cancel();
-            }
-
-            // Give a moment for cancellation to propagate
-            try {
-                launchThread.join(1000); // Wait up to 1 second for thread to exit
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt(); // Restore interrupted status
-            }
-            // If the tunnel was already opened, make sure it is not orphaned
-            stopTunnelProcess();
-        }
+        if (!launchOrchestrator.isRunning()) return;
+        Platform.runLater(() -> progressText.setText("Cancelling..."));
+        launchOrchestrator.cancel();
     }
 
-    /**
-     * Parses an already-validated ssh tunnel command into its components.
-     */
-    private static SshTunnel parseTunnel(String command) {
-        String error = SshTunnel.validate(command);
-        if (error != null) {
-            throw new IllegalStateException(error);
-        }
-        return SshTunnel.parse(command);
-    }
-
-    /**
-     * Starts the background "ssh -N" process for the given tunnel and waits
-     * until the local forwarded port accepts connections.
-     */
-    private void startTunnelProcess(SshTunnel tunnel) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(tunnel.buildCommand());
-        pb.redirectErrorStream(true);
-        Process p;
-        try {
-            p = pb.start();
-        } catch (Exception e) {
-            throw new Exception("Cannot execute \"ssh\". Make sure an OpenSSH client is installed and available in the PATH. (" + e.getMessage() + ")");
-        }
-        // The tunnel must die together with this JVM even if no shutdown hook is
-        // registered (e.g. when the app is started through the JavaFX launcher
-        // without going through main()).
-        final Process spawned = p;
-        try {
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try {
-                    if (spawned.isAlive()) {
-                        spawned.destroy();
-                    }
-                } catch (Throwable ignored) {
-                    // best-effort cleanup during JVM shutdown
-                }
-            }, "ssh-tunnel-destroy"));
-        } catch (IllegalStateException ignored) {
-            // JVM already shutting down: nothing to register
-        }
-        tunnelProcess = p;
-
-        boolean listening = false;
-        long deadline = System.currentTimeMillis() + 15000;
-        while (System.currentTimeMillis() < deadline) {
-            if (!p.isAlive()) {
-                int code = p.exitValue();
-                throw new Exception("The SSH tunnel closed immediately (exit code " + code + ").\n" +
-                        "Check the command, the jump host reachability and the SSH credentials/key.");
-            }
-            try (java.net.Socket s = new java.net.Socket()) {
-                s.connect(new java.net.InetSocketAddress("localhost", tunnel.localPort), 500);
-                listening = true;
-                break;
-            } catch (Exception ignored) {
-                Thread.sleep(300);
-            }
-        }
-        if (!listening) {
-            stopTunnelProcess();
-            throw new Exception("Timed out waiting for the SSH tunnel: localhost:" + tunnel.localPort +
-                    " is not accepting connections.\nThe remote endpoint may be unreachable through the jump host.");
-        }
-
-        // The local port accepting connections is not enough: ssh -L accepts the
-        // socket even when it cannot open a channel to the target, then closes it
-        // right away. Verify end-to-end with a protocol-agnostic probe: a working
-        // tunnel stays open waiting for data (timeout), a broken one EOFs at once.
-        boolean forwarding = false;
-        try (java.net.Socket s = new java.net.Socket()) {
-            s.connect(new java.net.InetSocketAddress("localhost", tunnel.localPort), 2000);
-            s.setSoTimeout(3000);
-            int b = -2;
-            try {
-                b = s.getInputStream().read();
-            } catch (java.net.SocketTimeoutException e) {
-                forwarding = true; // held open: the remote end is reachable
-            }
-            if (!forwarding && b != -1) {
-                forwarding = true; // server spoke first (e.g. TLS alert): tunnel works
-            }
-        } catch (java.io.IOException ignored) {
-            // connect/read failure means the tunnel is not usable
-        }
-        if (!forwarding) {
-            stopTunnelProcess();
-            throw new Exception("The SSH tunnel is listening, but the jump host could not reach " +
-                    tunnel.remoteHost + ":" + tunnel.remotePort + ".\n" +
-                    "Check that the target host and port are correct and reachable from the jump host.");
-        }
-    }
-
-    /**
-     * Terminates the background tunnel process, if one is running. The tunnel
-     * is normally kept alive for the whole BridgeLink session (the Java child
-     * process inherits the listening port) and is destroyed when this launcher
-     * exits thanks to the shutdown hook registered in main().
-     */
-    private void stopTunnelProcess() {
-        Process p = tunnelProcess;
-        tunnelProcess = null;
-        if (p != null && p.isAlive()) {
-            p.destroy();
-        }
+    /** Used by the shutdown hook in main(): terminates any tunnel that was started. */
+    public void stopTunnels() {
+        tunnelManager.stop();
     }
 
     /**
@@ -1400,7 +1267,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
             String message;
             Alert.AlertType type;
             try {
-                startTunnelProcess(tunnel);
+                tunnelManager.start(tunnel);
                 message = "Tunnel established successfully:\n" +
                         String.join(" ", tunnel.buildCommand()) + "\n\n" +
                         "localhost:" + tunnel.localPort + " is forwarding to " +
@@ -1415,7 +1282,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
                 message = e.getMessage() != null ? e.getMessage() : e.toString();
                 type = Alert.AlertType.ERROR;
             } finally {
-                stopTunnelProcess();
+                tunnelManager.stop();
             }
             final String resultMessage = message;
             final Alert.AlertType resultType = type;
@@ -1983,7 +1850,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
                 return;
             }
         }
-        stopTunnelProcess();
+        tunnelManager.stop();
         if (connectionHealth != null) {
             connectionHealth.shutdown();
         }
@@ -2009,15 +1876,6 @@ public class BridgeLinkLauncher extends Application implements Progress {
         alert.getDialogPane().setContent(textArea);
         alert.initOwner(this.primaryStage);
         alert.show();
-    }
-
-    @Override
-    public void updateProgressBar(double progress){
-        Platform.runLater(() -> this.progressBar.setProgress(progress));
-    }
-    @Override
-    public void updateProgressText(String message){
-        Platform.runLater(() -> this.progressText.setText(message));
     }
 
     /**
@@ -2079,7 +1937,7 @@ public class BridgeLinkLauncher extends Application implements Progress {
             BridgeLinkLauncher app = appHolder[0];
             if (app != null) {
                 try {
-                    app.stopTunnelProcess();
+                    app.stopTunnels();
                 } catch (Throwable t) {
                     // best-effort cleanup: never let the hook crash the JVM shutdown
                 }
