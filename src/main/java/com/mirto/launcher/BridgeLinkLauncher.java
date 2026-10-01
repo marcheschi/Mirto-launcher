@@ -1719,9 +1719,16 @@ public class BridgeLinkLauncher extends Application implements Progress {
                 for (Connection conn : connections) {
                     // Jackson will set clearCacheJars to false for missing fields, so no additional handling needed
                 }
+
+                // Semantic validation: surface unusable entries (bad address/heap size)
+                // now with a precise message instead of an opaque failure at launch.
+                String problems = ConnectionsValidator.validate(connections);
+                if (problems != null) {
+                    showAlert("Some saved connections have invalid settings and may fail to launch:\n" + problems);
+                }
             } catch (IOException e) {
-                showAlert("Unable to load connections from file: " + connectionsFile.getAbsolutePath() +
-                        ". Error: " + e.getMessage());
+                showAlert("Unable to load connections from file: " + connectionsFile.getAbsolutePath()
+                        + ". The file is corrupt or has an unexpected structure.\nError: " + e.getMessage());
             }
         }
         return connections;
