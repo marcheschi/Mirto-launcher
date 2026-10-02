@@ -30,6 +30,7 @@ public final class LaunchOrchestrator {
     public static final class Request {
         public final String address;
         public final String sshTunnelCommand; // may be empty
+        public final boolean tunnelDisabled;  // when true, don't open our own SSH tunnel (external forward active)
         public final File cacheFolder;
         public final boolean clearCacheJars;
         public final JavaConfig javaConfig;
@@ -38,11 +39,12 @@ public final class LaunchOrchestrator {
         public final String iconPath;       // resolved absolute path, or null
         public final String connectionName; // may be null
 
-        public Request(String address, String sshTunnelCommand, File cacheFolder,
+        public Request(String address, String sshTunnelCommand, boolean tunnelDisabled, File cacheFolder,
                        boolean clearCacheJars, JavaConfig javaConfig, Credential credential,
                        boolean showConsole, String iconPath, String connectionName) {
             this.address = address;
             this.sshTunnelCommand = sshTunnelCommand;
+            this.tunnelDisabled = tunnelDisabled;
             this.cacheFolder = cacheFolder;
             this.clearCacheJars = clearCacheJars;
             this.javaConfig = javaConfig;
@@ -72,15 +74,26 @@ public final class LaunchOrchestrator {
         try {
             String host = req.address;
 
-            // Optional SSH tunnel: open it first, then route the download
-            // through the local end of the tunnel.
+            // Optional SSH tunnel. When enabled we open our own "ssh -N" forward and route the
+            // download through its local end. When disabled, an external forward (e.g. stunnel)
+            // already exposes that local port, so we skip opening a competing ssh process and just
+            // connect through the configured local end of the -L spec.
             if (req.sshTunnelCommand != null && !req.sshTunnelCommand.trim().isEmpty()) {
-                SshTunnel tunnel = parseTunnel(req.sshTunnelCommand);
-                listener.status("Opening SSH tunnel on localhost:" + tunnel.localPort + "...");
-                tunnels.start(tunnel);
-                host = tunnel.rewriteUrl(host);
-                LOG.debug("SSH tunnel active: {}", String.join(" ", tunnel.buildCommand()));
-                listener.status("Launching " + host + " (via SSH tunnel)");
+                if (!req.tunnelDisabled) {
+                    SshTunnel tunnel = parseTunnel(req.sshTunnelCommand);
+                    listener.status("Opening SSH tunnel on localhost:" + tunnel.localPort + "...");
+                    tunnels.start(tunnel);
+                    host = tunnel.rewriteUrl(host);
+                    LOG.debug("SSH tunnel active: {}", String.join(" ", tunnel.buildCommand()));
+                } else {
+                    SshTunnel spec = SshTunnel.parse(req.sshTunnelCommand);
+                    if (spec.localPort > 0) {
+                        host = spec.rewriteUrl(host);
+                        listener.status("SSH tunnel disabled — connecting via localhost:" + spec.localPort + " (external forward)");
+                    } else {
+                        listener.status("SSH tunnel disabled — connecting directly to " + host);
+                    }
+                }
             }
 
             listener.status("Downloading JNLP from " + host);

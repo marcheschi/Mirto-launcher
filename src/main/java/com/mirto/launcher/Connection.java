@@ -28,6 +28,10 @@ public class Connection {
     private String notes; // Notes about the connection
     private boolean trustSelfSignedCertificate; // Per-connection opt-in to skip SSL verification
     private String sshTunnelCommand; // Optional "ssh -L ..." command used to jump through an SSL/SSH tunnel
+    // When true, do NOT open our own SSH tunnel at launch: an external forward (e.g. stunnel)
+    // already exposes the local port, so we just route through it. Defaults to false (enabled),
+    // which keeps existing connection files working unchanged.
+    private boolean tunnelDisabled;
     /** Per-connection probe timeout in ms (null = use the default). Omitted from JSON when unset. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Integer probeTimeoutMs;
@@ -61,6 +65,7 @@ public class Connection {
         this.notes = other.notes;
         this.trustSelfSignedCertificate = other.trustSelfSignedCertificate;
         this.sshTunnelCommand = other.sshTunnelCommand;
+        this.tunnelDisabled = other.tunnelDisabled;
         this.probeTimeoutMs = other.probeTimeoutMs;
     }
 
@@ -171,6 +176,9 @@ public class Connection {
     public void setTrustSelfSignedCertificate(boolean trustSelfSignedCertificate) { this.trustSelfSignedCertificate = trustSelfSignedCertificate; }
     public String getSshTunnelCommand() { return sshTunnelCommand; }
     public void setSshTunnelCommand(String sshTunnelCommand) { this.sshTunnelCommand = sshTunnelCommand; }
+    /** @return true when the launcher must NOT open its own SSH tunnel (external forward active). */
+    public boolean isTunnelDisabled() { return tunnelDisabled; }
+    public void setTunnelDisabled(boolean tunnelDisabled) { this.tunnelDisabled = tunnelDisabled; }
     /** @return the per-connection probe timeout in ms, or {@code null} to use the default. */
     public Integer getProbeTimeoutMs() { return probeTimeoutMs; }
     public void setProbeTimeoutMs(Integer probeTimeoutMs) { this.probeTimeoutMs = probeTimeoutMs; }

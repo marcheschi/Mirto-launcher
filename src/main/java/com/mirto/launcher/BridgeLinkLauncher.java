@@ -121,6 +121,7 @@ public class BridgeLinkLauncher extends Application {
     private CheckBox closeWindowCheckBox;
     private TextField sshTunnelTextField;
     private Button sshTunnelTestButton;
+    private CheckBox useSshTunnelCheckBox;
     // Shared tunnel lifecycle (launch flow + "Test" button) and the launch sequence.
     private final TunnelManager tunnelManager = new TunnelManager();
     private final LaunchOrchestrator launchOrchestrator = new LaunchOrchestrator(tunnelManager);
@@ -434,6 +435,7 @@ public class BridgeLinkLauncher extends Application {
                 jvmOptionsTextField.setText("");
                 notesTextArea.setText("");
                 sshTunnelTextField.setText("");
+                useSshTunnelCheckBox.setSelected(true);
                 clearCacheCheckBox.setSelected(false);
                 trustSelfSignedCheckBox.setSelected(false);
                 // Reset radio buttons to bundled and update control states
@@ -456,6 +458,7 @@ public class BridgeLinkLauncher extends Application {
             notesTextArea.setDisable(!isConnection);
             sshTunnelTextField.setDisable(!isConnection);
             sshTunnelTestButton.setDisable(!isConnection);
+            useSshTunnelCheckBox.setDisable(!isConnection);
             showConsoleCheckBox.setDisable(!isConnection);
             trustSelfSignedCheckBox.setDisable(!isConnection);
 
@@ -642,7 +645,15 @@ public class BridgeLinkLauncher extends Application {
         sshTunnelTestButton = new Button("Test");
         sshTunnelTestButton.setTooltip(new Tooltip("Opens the tunnel, verifies the port is listening, then closes it"));
         sshTunnelTestButton.setOnAction(e -> testSshTunnel());
-        sshTunnelRow.getChildren().addAll(sshTunnelLabel, sshTunnelTextField, sshTunnelTestButton);
+        useSshTunnelCheckBox = new CheckBox("Use SSH tunnel");
+        useSshTunnelCheckBox.setSelected(true);
+        useSshTunnelCheckBox.setTooltip(new Tooltip(
+                "When checked, BridgeLink opens its own \"ssh -N\" forward at launch.\n" +
+                "Uncheck when an external forward (e.g. stunnel) already exposes the local port:\n" +
+                "BridgeLink will then connect through localhost:<localport> from your -L spec\n" +
+                "instead of opening a competing ssh process."));
+        useSshTunnelCheckBox.setOnAction(e -> updateSaveButtonState());
+        sshTunnelRow.getChildren().addAll(sshTunnelLabel, sshTunnelTextField, sshTunnelTestButton, useSshTunnelCheckBox);
         HBox.setHgrow(sshTunnelTextField, Priority.ALWAYS);
 
         // Icon selection row
@@ -1180,6 +1191,7 @@ public class BridgeLinkLauncher extends Application {
         LaunchOrchestrator.Request request = new LaunchOrchestrator.Request(
                 addressTextField.getText(),
                 sshTunnelTextField.getText().trim(),
+                !useSshTunnelCheckBox.isSelected(),
                 cacheFolder,
                 clearCacheCheckBox.isSelected(),
                 javaConfig,
@@ -1522,6 +1534,7 @@ public class BridgeLinkLauncher extends Application {
         notesTextArea.setDisable(!finalEnabled);
         sshTunnelTextField.setDisable(!finalEnabled);
         sshTunnelTestButton.setDisable(!finalEnabled);
+        useSshTunnelCheckBox.setDisable(!finalEnabled);
         showConsoleCheckBox.setDisable(!finalEnabled);
         clearCacheCheckBox.setDisable(!finalEnabled);
         iconButton.setDisable(!finalEnabled);
@@ -1667,6 +1680,7 @@ public class BridgeLinkLauncher extends Application {
         jvmOptionsTextField.setText(StringUtils.defaultString(conn.getJvmOptions()));
         notesTextArea.setText(StringUtils.defaultString(conn.getNotes()));
         sshTunnelTextField.setText(StringUtils.defaultString(conn.getSshTunnelCommand()));
+        useSshTunnelCheckBox.setSelected(!conn.isTunnelDisabled());
         closeWindowCheckBox.setSelected(conn.isCloseWindow());
         clearCacheCheckBox.setSelected(conn.isClearCacheJars());
         trustSelfSignedCheckBox.setSelected(conn.isTrustSelfSignedCertificate());
@@ -1703,6 +1717,7 @@ public class BridgeLinkLauncher extends Application {
         conn.setNotes(this.notesTextArea.getText());
         String tunnelCmd = this.sshTunnelTextField.getText().trim();
         conn.setSshTunnelCommand(tunnelCmd.isEmpty() ? null : tunnelCmd);
+        conn.setTunnelDisabled(!useSshTunnelCheckBox.isSelected());
 
         // Apply temporary icon if it exists, otherwise keep existing icon
         if (tempSelectedIcon != null) {
@@ -1793,6 +1808,7 @@ public class BridgeLinkLauncher extends Application {
         values.put("jvmOptions", jvmOptionsTextField.getText());
         values.put("notes", notesTextArea.getText());
         values.put("sshTunnelCommand", sshTunnelTextField.getText().trim());
+        values.put("useSshTunnel", useSshTunnelCheckBox.isSelected());
         values.put("showJavaConsole", showConsoleCheckBox.isSelected());
         values.put("trustSelfSignedCertificate", trustSelfSignedCheckBox.isSelected());
         values.put("closeWindow", closeWindowCheckBox.isSelected());
