@@ -134,7 +134,7 @@ public class UpdateChecker {
     /** @return the running application version (jar manifest or fallback constant). */
     static String currentVersion() {
         try {
-            String v = BridgeLinkLauncher.class.getPackage().getImplementationVersion();
+            String v = MirtoLinkLauncher.class.getPackage().getImplementationVersion();
             if (v != null && !v.trim().isEmpty()) {
                 return v.trim();
             }
@@ -142,7 +142,7 @@ public class UpdateChecker {
             // fall through to the constant
         }
         // Single source of truth: must stay in sync with pom.xml via FALLBACK_VERSION.
-        return BridgeLinkLauncher.FALLBACK_VERSION;
+        return MirtoLinkLauncher.FALLBACK_VERSION;
     }
 
     /**

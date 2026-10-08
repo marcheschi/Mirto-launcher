@@ -1,0 +1,492 @@
+/* ============================================================
+   Mirto-Launcher design system — "Time Out" world
+   Brand anchors: Mirto orange #F5821F, navy #1B3A6B.
+   State is the design language: cleared checks, flagged
+   criticals, one igniting primary action.
+   Hierarchy by weight / case / reversal before size.
+   Spacing scale: 4 / 8 / 12 / 16 / 20 / 24 (structural honesty).
+   ============================================================ */
+
+/* ---------- Theme tokens ---------- */
+
+.theme-light {
+    -m-bg:            #F5F2EB;   /* warm ivory ground */
+    -m-surface:       #FFFFFF;
+    -m-ink:           #1B3A6B;   /* navy ink */
+    -m-ink-soft:      #5C6E8C;
+    -m-line:          #DCE2EC;
+    -m-row-hover:     #EEF1F7;
+    -m-row-selected:  #E3E9F4;
+
+    /* rail (committed navy) */
+    -m-rail-bg:       #1B3A6B;
+    -m-rail-ink:      #F2F5FA;
+    -m-rail-soft:     #AFC0DA;
+    -m-rail-line:     #2E4C7E;
+    -m-rail-hover:    #24467D;
+    -m-rail-selected: #2C518F;
+    -m-filter-bg:     #2A4C85;   /* rail lifted for the filter input */
+
+    /* action color — deep enough for white text (>= 4.5:1) */
+    -m-accent-brand:   #F5821F;
+    -m-accent-fill:    #B35409;
+    -m-accent-hover:   #C7620C;
+    -m-accent-pressed: #9E4A08;
+    -m-accent-ink:     #FFFFFF;
+
+    /* states */
+    -m-ok:        #256D3B;
+    -m-ok-mark:   #3FA35C;
+    -m-bad:       #B03A2E;
+    -m-bad-mark:  #D24B3E;
+    -m-warn:      #8A6410;
+    -m-notice-bg: #FBF1DE;
+
+    -m-focus:     rgba(245, 130, 31, 0.9);
+}
+
+.theme-dark {
+    -m-bg:            #111E34;   /* deep navy ground */
+    -m-surface:       #182945;
+    -m-ink:           #EAF0F8;
+    -m-ink-soft:      #A6B7D1;
+    -m-line:          #2C4066;
+    -m-row-hover:     #1E3253;
+    -m-row-selected:  #24406B;
+
+    /* rail — darker than the ground */
+    -m-rail-bg:       #0C1729;
+    -m-rail-ink:      #EDF2FA;
+    -m-rail-soft:     #8FA3C4;
+    -m-rail-line:     #1D3050;
+    -m-rail-hover:    #16294A;
+    -m-rail-selected: #1E3560;
+    -m-filter-bg:     #152741;   /* rail lifted for the filter input */
+
+    /* action color — bright orange, dark ink for contrast */
+    -m-accent-brand:   #FF8E2B;
+    -m-accent-fill:    #FF8E2B;
+    -m-accent-hover:   #FFA14F;
+    -m-accent-pressed: #F07E1D;
+    -m-accent-ink:     #14203A;
+
+    /* states */
+    -m-ok:        #6FCF8F;
+    -m-ok-mark:   #4FBF74;
+    -m-bad:       #E57163;
+    -m-bad-mark:  #D24B3E;
+    -m-warn:      #E0A63F;
+    -m-notice-bg: #2A3550;
+
+    -m-focus:     rgba(255, 142, 43, 0.9);
+}
+
+/* ---------- Root / scene ---------- */
+
+.root {
+    -fx-background-color: -m-bg;
+    -fx-font-size: 13px;
+    -fx-text-fill: -m-ink;
+    -fx-focus-color: -m-focus;
+    -fx-faint-focus-color: transparent;
+}
+
+/* Modena derives its default label text color from -fx-text-background-color, a
+   token it sets on .root as a ladder over the (still white) -fx-background — so any
+   bare Label renders dark-on-dark in the dark theme. Override that root token with
+   our ink; ".root.theme-*" has higher specificity than Modena's ".root", so this
+   wins and every unstyled label inherits the correct per-theme color. */
+.root.theme-light {
+    -fx-text-background-color: #1B3A6B;
+}
+
+.root.theme-dark {
+    -fx-text-background-color: #EAF0F8;
+}
+
+/* ---------- Rail (left navigation) ---------- */
+
+.rail {
+    -fx-background-color: -m-rail-bg;
+    -fx-border-color: transparent transparent transparent -m-rail-line;
+    -fx-border-width: 0 1px 0 0;
+}
+
+.rail-header {
+    -fx-padding: 16px 16px 12px 16px;
+    -fx-border-color: transparent transparent -m-rail-line transparent;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.app-title {
+    -fx-text-fill: -m-rail-ink;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+
+.app-version {
+    -fx-text-fill: -m-rail-soft;
+    -fx-font-size: 11px;
+}
+
+.rail-section-label {
+    -fx-text-fill: -m-rail-soft;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.rail-footer {
+    -fx-border-color: -m-rail-line transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 8px;
+}
+
+/* ---------- Connection tree (rail) ---------- */
+
+.tree-view {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+    -fx-padding: 4px 8px;
+}
+
+/* The editable tree cell embeds a TextField as its graphic — the global form
+   control styles must not leak into it (that is what painted the white box). */
+.tree-cell .text-field {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-text-fill: -m-rail-ink;
+    -fx-prompt-text-fill: -m-rail-soft;
+}
+
+.tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -m-rail-ink;
+    -fx-graphic-text-gap: 6px;
+    -fx-padding: 5px 8px;
+    -fx-background-radius: 6px;
+}
+
+.tree-cell:hover {
+    -fx-background-color: -m-rail-hover;
+}
+
+.tree-cell:selected {
+    -fx-background-color: -m-rail-selected;
+    -fx-text-fill: -m-rail-ink;
+    -fx-font-weight: bold;
+}
+
+.tree-cell .text {
+    -fx-fill: inherit;
+}
+
+/* ---------- Detail pane (right) ---------- */
+
+.detail-scroll {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+/* The inner viewport keeps Modena's white unless told otherwise — let the
+   themed .detail background show through any gap below the form. */
+.detail-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.detail {
+    -fx-background-color: -m-bg;
+    -fx-padding: 20px 24px 12px 24px;
+}
+
+.profile-toolbar {
+    -fx-spacing: 8px;
+    -fx-padding: 0 0 16px 0;
+    -fx-border-color: transparent transparent -m-line transparent;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.section {
+    -fx-padding: 16px 0 4px 0;
+}
+
+.section-title {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -m-ink-soft;
+    -fx-padding: 0 0 8px 0;
+}
+
+.form-row {
+    -fx-padding: 4px 0;
+}
+
+/* ---------- Buttons ---------- */
+
+.button {
+    -fx-background-color: -m-surface;
+    -fx-text-fill: -m-ink;
+    -fx-border-color: -m-line;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 5px 12px 5px 12px;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: -m-row-hover;
+}
+
+.button:pressed, .button:armed {
+    -fx-background-color: -m-row-selected;
+}
+
+.button:disabled {
+    -fx-opacity: 0.45;
+    -fx-cursor: default;
+}
+
+/* Primary action — the only accent on screen until cleared */
+.btn-primary {
+    -fx-background-color: -m-accent-fill;
+    -fx-text-fill: -m-accent-ink;
+    -fx-border-color: transparent;
+    -fx-font-weight: bold;
+    -fx-padding: 7px 20px 7px 20px;
+}
+
+.btn-primary:hover {
+    -fx-background-color: -m-accent-hover;
+}
+
+.btn-primary:pressed, .btn-primary:armed {
+    -fx-background-color: -m-accent-pressed;
+}
+
+.btn-primary:disabled {
+    -fx-background-color: -m-surface;
+    -fx-text-fill: -m-ink-soft;
+    -fx-border-color: -m-line;
+    -fx-opacity: 1.0;
+}
+
+/* Destructive action */
+.btn-danger {
+    -fx-text-fill: -m-bad;
+    -fx-border-color: derive(-m-bad, 45%);
+}
+
+.btn-danger:hover {
+    -fx-background-color: derive(-m-bad, 88%);
+}
+
+/* ---------- Form controls ---------- */
+
+.text-field, .password-field, .combo-box, .text-area {
+    -fx-background-color: -m-surface;
+    -fx-text-fill: -m-ink;
+    -fx-prompt-text-fill: -m-ink-soft;
+    -fx-border-color: -m-line;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.text-field:focused, .password-field:focused, .text-area:focused {
+    -fx-border-color: -m-accent-brand;
+    -fx-border-width: 1.5px;
+}
+
+.combo-box-base:focused {
+    -fx-border-color: -m-accent-brand;
+}
+
+/* The closed combo shows its value via an internal list-view whose selected cell
+   (classes "cell indexed-cell list-cell") paints the text — NOT the ComboBox node
+   and not a Label. Modena fills that cell with a white-derived color, so it comes
+   out dark-on-dark in the dark theme. Two-class specificity beats Modena's rules;
+   cover the selected state too since the display cell is the current selection. */
+.combo-box .list-cell,
+.combo-box .list-cell:selected {
+    -fx-text-fill: -m-ink;
+}
+
+/* Editable combos and any stray label/text-field inside a combo stay legible. */
+.combo-box .label,
+.combo-box .text-field {
+    -fx-text-fill: -m-ink;
+}
+
+/* Dropdown items (separate popup subtree) stay legible in both themes. */
+.combo-box-popup > .list-view > .list-cell {
+    -fx-text-fill: -m-ink;
+}
+
+
+
+/* A TextArea paints its text on a ".content" node that Modena fills with the
+   white control-inner background, and its inner ScrollPane viewport does the
+   same — make both fully transparent so the themed surface (set on .text-area
+   above) shows through. */
+.text-area > .scroll-pane > .viewport {
+    -fx-background-color: #00000000; /* fully transparent (ARGB) */
+}
+
+.text-area .content {
+    -fx-background-color: #00000000;
+}
+
+.text-area:focused .content {
+    -fx-background-color: #00000000;
+}
+
+.check-box {
+    -fx-text-fill: -m-ink;
+}
+
+.radio-button {
+    -fx-text-fill: -m-ink;
+}
+
+/* Filter field (rail) — declared after the global form-control rules above so
+   it wins the cascade for this specific node. */
+.filter-field {
+    -fx-background-color: -m-filter-bg;
+    -fx-text-fill: -m-rail-ink;
+    -fx-prompt-text-fill: -m-rail-soft;
+    -fx-border-color: transparent;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.filter-field:focused {
+    -fx-background-color: -m-rail-hover;
+    -fx-border-color: -m-accent-brand;
+    -fx-border-width: 1px;
+}
+
+/* ---------- Readiness strip (Time Out) ---------- */
+
+.actionbar {
+    -fx-background-color: -m-surface;
+    -fx-border-color: -m-line transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 10px 16px;
+}
+
+.readiness-strip {
+    -fx-spacing: 14px;
+}
+
+.check-item {
+    -fx-spacing: 5px;
+}
+
+.check-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -m-ink-soft;
+}
+
+.check-state-cleared {
+    -fx-font-size: 12px;
+    -fx-text-fill: -m-ok;
+}
+
+.check-state-flagged {
+    -fx-font-size: 12px;
+    -fx-text-fill: -m-bad;
+    -fx-font-weight: bold;
+}
+
+.check-state-info {
+    -fx-font-size: 12px;
+    -fx-text-fill: -m-ink-soft;
+}
+
+/* ---------- Progress area ---------- */
+
+.progress-bar {
+    -fx-indeterminate-bar-flip: false;
+}
+
+.progress-bar .track {
+    -fx-background-color: -m-row-hover;
+    -fx-background-radius: 4px;
+}
+
+.progress-bar .bar {
+    -fx-background-color: -m-accent-brand;
+    -fx-background-insets: 0;
+    -fx-background-radius: 4px;
+    -fx-padding: 4px;
+}
+
+.progress-text {
+    -fx-fill: -m-ink-soft;
+    -fx-font-size: 12px;
+}
+
+/* ---------- Update notice ---------- */
+
+.update-notice {
+    -fx-background-color: -m-notice-bg;
+    -fx-border-color: derive(-m-warn, 55%);
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 6px 10px;
+    -fx-spacing: 8px;
+}
+
+.update-notice-label {
+    -fx-text-fill: -m-warn;
+    -fx-font-weight: bold;
+}
+
+/* ---------- Empty state ---------- */
+
+.empty-state {
+    -fx-alignment: CENTER;
+    -fx-padding: 40px;
+}
+
+.empty-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -m-ink;
+}
+
+.empty-hint {
+    -fx-font-size: 13px;
+    -fx-text-fill: -m-ink-soft;
+}
+
+/* ---------- Scrollbars (subtle, themed) ---------- */
+
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: derive(-m-line, -12%);
+    -fx-background-radius: 4px;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+}
+
+/* ---------- Icon button (connection icon picker) ---------- */
+
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-border-color: -m-line;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.icon-button:hover {
+    -fx-background-color: -m-row-hover;
+}

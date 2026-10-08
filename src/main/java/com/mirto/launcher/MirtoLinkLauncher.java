@@ -39,10 +39,20 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.TextFieldTreeCell;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.Priority;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.shape.Circle;
+import javafx.animation.Interpolator;
+import javafx.animation.ScaleTransition;
+import javafx.util.Duration;
 import javafx.stage.Stage;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -64,13 +74,13 @@ import java.util.ArrayList;
 import java.util.UUID;
 import java.util.Optional;
 
-public class BridgeLinkLauncher extends Application {
+public class MirtoLinkLauncher extends Application {
     private static final boolean DEVELOP = false;
     // Keep in sync with the <version> in pom.xml; when running from a packaged
     // jar the manifest value wins (see resolveVersion()).
     // Package-private so UpdateChecker can use it as the single source of truth
     // for the running version when the jar manifest carries no Implementation-Version.
-    static final String FALLBACK_VERSION = "1.9.4";
+    static final String FALLBACK_VERSION = "1.9.5";
     private static final String VERSION = DEVELOP ? "Development " + FALLBACK_VERSION : resolveVersion();
 
     /**
@@ -79,7 +89,7 @@ public class BridgeLinkLauncher extends Application {
      */
     private static String resolveVersion() {
         try {
-            String v = BridgeLinkLauncher.class.getPackage().getImplementationVersion();
+            String v = MirtoLinkLauncher.class.getPackage().getImplementationVersion();
             if (v != null && !v.trim().isEmpty()) {
                 return v;
             }
@@ -89,7 +99,7 @@ public class BridgeLinkLauncher extends Application {
         return FALLBACK_VERSION;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(BridgeLinkLauncher.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MirtoLinkLauncher.class);
     private Image LAUNCHER_ICON;
     private Image BRIDGELINK_ICON;
 
@@ -152,8 +162,24 @@ public class BridgeLinkLauncher extends Application {
     // changes and to implement Discard/Revert.
     private Map<String, Object> loadedSnapshot;
 
+    // "Time Out" shell (redesign): rail + detail sections + readiness strip.
+    private BorderPane shellRoot;
+    private ToggleButton themeToggleButton;
+    private VBox detailForm;
+    private VBox emptyState;
+    private HBox updateNotice;
+    private HBox statusRow;
+    // Readiness-strip state labels (ADDRESS is the only hard gate; the rest —
+    // including the tunnel, by design — are informational and never block launch).
+    private Label addressCheckState;
+    private Label credentialCheckState;
+    private Label runtimeCheckState;
+    private Label tunnelCheckState;
+    private boolean tunnelTestedOk = false;
+    private boolean launchWasReady = false;
+
     /** No-arg constructor required by the JavaFX launcher (see {@link #main}). */
-    public BridgeLinkLauncher() {
+    public MirtoLinkLauncher() {
         this(null);
     }
 
@@ -163,7 +189,7 @@ public class BridgeLinkLauncher extends Application {
      *             an explicit field because {@code getParameters()} is not usable
      *             from the static shutdown hook registered in {@link #main}.
      */
-    public BridgeLinkLauncher(String[] args) {
+    public MirtoLinkLauncher(String[] args) {
         this.startupArgs = args != null ? args : new String[0];
     }
 
@@ -199,18 +225,46 @@ public class BridgeLinkLauncher extends Application {
             }
         });
 
-        VBox root = new VBox(15);
-        root.setPadding(new Insets(15));
+        /* ---------- Shell: rail (left) + detail (right) + action bar (bottom) ---------- */
+        BorderPane root = new BorderPane();
+        shellRoot = root;
 
-        // Connections Section with Buttons
-        VBox connectionsSection = new VBox(20);
-        connectionsSection.setPadding(new Insets(10));
-        connectionsSection.setAlignment(Pos.TOP_CENTER);
+        // Left rail: brand header, filter, connection tree, profile actions.
+        VBox rail = new VBox(10);
+        rail.getStyleClass().add("rail");
+        rail.setPrefWidth(300);
+        rail.setMinWidth(260);
 
-        // Table buttons
-        HBox tableButtons = new HBox(10);
+        HBox railHeader = new HBox(8);
+        railHeader.getStyleClass().add("rail-header");
+        ImageView railLogo = new ImageView(LAUNCHER_ICON);
+        railLogo.setFitHeight(28);
+        railLogo.setPreserveRatio(true);
+        VBox titleBox = new VBox(1);
+        Label appTitle = new Label("Mirto-Launcher");
+        appTitle.getStyleClass().add("app-title");
+        Label appVersionLabel = new Label("v" + VERSION);
+        appVersionLabel.getStyleClass().add("app-version");
+        titleBox.getChildren().addAll(appTitle, appVersionLabel);
+        HBox.setHgrow(titleBox, Priority.ALWAYS);
+
+        themeToggleButton = new ToggleButton(isDarkTheme() ? "Dark" : "Light");
+        themeToggleButton.setSelected(isDarkTheme());
+        themeToggleButton.setTooltip(new Tooltip("Switch between light and dark theme"));
+        themeToggleButton.setOnAction(e -> {
+            boolean dark = themeToggleButton.isSelected();
+            applyTheme(dark);
+            themeToggleButton.setText(dark ? "Dark" : "Light");
+        });
+
+        railHeader.getChildren().addAll(railLogo, titleBox, themeToggleButton);
+
+        Label connectionsLabel = new Label("CONNECTIONS");
+        connectionsLabel.getStyleClass().add("rail-section-label");
+        connectionsLabel.setPadding(new Insets(4, 16, 0, 16));
 
         filterField = new TextField();
+        filterField.getStyleClass().add("filter-field");
         filterField.setPromptText("Filter connections...");
         filterField.setPrefWidth(200);
         filterField.setMinWidth(200);
@@ -246,8 +300,9 @@ public class BridgeLinkLauncher extends Application {
                 connectionHealth.checkAllNow();
             }
         });
-        tableButtons.getChildren().addAll(filterField, newButton, saveButton, revertButton, duplicateButton, deleteButton, healthRefreshButton);
-        tableButtons.setAlignment(Pos.CENTER_LEFT);
+        HBox filterWrap = new HBox(filterField);
+        filterWrap.setPadding(new Insets(0, 16, 8, 16));
+        rail.getChildren().addAll(railHeader, connectionsLabel, filterWrap);
 
         // TreeView setup
         connectionsTreeView = new TreeView<>();
@@ -307,14 +362,14 @@ public class BridgeLinkLauncher extends Application {
                             }
                         }
                         
-                        // Health status dot (shown once the connection has been probed)
+                        // Health status mark (drawn circle, shown once the connection has been probed)
                         javafx.scene.Node healthGraphic = null;
                         if (connectionHealth != null) {
                             ConnectionHealth.Status hs = connectionHealth.getStatus(item);
                             if (hs == ConnectionHealth.Status.REACHABLE || hs == ConnectionHealth.Status.UNREACHABLE) {
-                                Text dot = new Text("\u25CF");
+                                Circle dot = new Circle(4);
                                 dot.setFill(hs == ConnectionHealth.Status.REACHABLE
-                                        ? Color.web("#2e9e44") : Color.web("#cc3333"));
+                                        ? Color.web("#3FA35C") : Color.web("#D24B3E"));
                                 healthGraphic = dot;
                             }
                         }
@@ -449,7 +504,14 @@ public class BridgeLinkLauncher extends Application {
             revertButton.setDisable(true);
             duplicateButton.setDisable(!isConnection);
             deleteButton.setDisable(!isConnection);
-            launchButton.setDisable(!isConnection);
+            refreshActionStates();
+            // Show the form when a connection is selected, otherwise the empty state.
+            if (detailForm != null && emptyState != null) {
+                detailForm.setVisible(isConnection);
+                detailForm.setManaged(isConnection);
+                emptyState.setVisible(!isConnection);
+                emptyState.setManaged(!isConnection);
+            }
             groupTextField.setDisable(!isConnection);
             addressTextField.setDisable(!isConnection);
             usernameTextField.setDisable(!isConnection);
@@ -481,24 +543,45 @@ public class BridgeLinkLauncher extends Application {
             exportButton.setDisable(connectionsList.isEmpty());
         });
 
-        // Right buttons
-        VBox rightButtons = new VBox(10);
+        // Rail footer: profile management actions.
         importButton = new Button("Import");
         importButton.setOnAction(e -> importConnections());
         exportButton = new Button("Export");
         exportButton.setOnAction(e -> exportConnections());
         exportButton.setDisable(true);
-        rightButtons.getChildren().addAll(importButton, exportButton);
-        rightButtons.setAlignment(Pos.TOP_CENTER);
+        // 2x2 grid so all four actions fit the narrow rail without truncation.
+        GridPane railFooter = new GridPane();
+        railFooter.getStyleClass().add("rail-footer");
+        railFooter.setHgap(8);
+        railFooter.setVgap(8);
+        ColumnConstraints colA = new ColumnConstraints();
+        colA.setHgrow(Priority.ALWAYS);
+        ColumnConstraints colB = new ColumnConstraints();
+        colB.setHgrow(Priority.ALWAYS);
+        railFooter.getColumnConstraints().addAll(colA, colB);
+        railFooter.add(newButton, 0, 0);
+        railFooter.add(importButton, 1, 0);
+        railFooter.add(exportButton, 0, 1);
+        railFooter.add(healthRefreshButton, 1, 1);
 
-        HBox tableArea = new HBox(10);
-        tableArea.getChildren().addAll(connectionsTreeView, rightButtons);
-        HBox.setHgrow(connectionsTreeView, Priority.ALWAYS);
+        VBox.setVgrow(connectionsTreeView, Priority.ALWAYS);
+        rail.getChildren().add(connectionsTreeView);
+        rail.getChildren().add(railFooter);
 
-        connectionsSection.getChildren().addAll(tableButtons, tableArea);
+        /* ---------- Detail pane (right) ---------- */
 
-        // Configuration Section (Modified: Java Home and Max Heap Size on same line)
-        VBox configBox = new VBox(10);
+        // Profile toolbar: per-connection actions.
+        HBox profileToolbar = new HBox(8);
+        profileToolbar.getStyleClass().add("profile-toolbar");
+        deleteButton.getStyleClass().add("btn-danger");
+        Region toolbarSpacer = new Region();
+        HBox.setHgrow(toolbarSpacer, Priority.ALWAYS);
+        profileToolbar.getChildren().addAll(saveButton, revertButton, duplicateButton, deleteButton, toolbarSpacer);
+
+        // Section: SERVER (address, credentials, notes).
+        VBox serverSection = new VBox(4);
+        serverSection.getStyleClass().add("section");
+        serverSection.getChildren().add(sectionHeader("SERVER"));
 
         // Group row
         HBox groupRow = new HBox(10);
@@ -529,7 +612,11 @@ public class BridgeLinkLauncher extends Application {
         HBox.setHgrow(usernameTextField, Priority.ALWAYS);
         HBox.setHgrow(passwordField, Priority.ALWAYS);
 
-        // Java Config rows
+        // Section: RUNTIME (Java home, heap, JVM options).
+        VBox runtimeSection = new VBox(4);
+        runtimeSection.getStyleClass().add("section");
+        runtimeSection.getChildren().add(sectionHeader("RUNTIME"));
+
         // Java Home row with radio buttons, combo box, and text field
         HBox javaHomeRow = new HBox(10);
         Label javaHomeLabel = new Label("Java Home:");
@@ -627,12 +714,20 @@ public class BridgeLinkLauncher extends Application {
         securityRow.getChildren().addAll(trustSelfSignedCheckBox);
         securityRow.setAlignment(Pos.CENTER_LEFT);
 
+        // Section: ACCESS & LAUNCH (tunnel, security flags, console, icon).
+        VBox accessSection = new VBox(4);
+        accessSection.getStyleClass().add("section");
+        accessSection.getChildren().add(sectionHeader("ACCESS & LAUNCH"));
+
         // SSH tunnel row: optional "ssh -L ..." command to jump through a tunnel
         HBox sshTunnelRow = new HBox(10);
         Label sshTunnelLabel = new Label("SSH Tunnel:");
         sshTunnelTextField = new TextField();
         sshTunnelTextField.setPromptText("e.g. ssh -L 8443:mirth.prova.it:8443 root@node01.picopalla.it (leave empty for direct connection)");
-        sshTunnelTextField.textProperty().addListener((obs, oldVal, newVal) -> updateSaveButtonState());
+        sshTunnelTextField.textProperty().addListener((obs, oldVal, newVal) -> {
+            tunnelTestedOk = false; // a changed command is untested again
+            updateSaveButtonState();
+        });
         sshTunnelTextField.setTooltip(new Tooltip(
                 "Optional SSH local-port-forwarding command used to reach the server\n" +
                 "through a tunnel (jump). Example:\n" +
@@ -665,7 +760,7 @@ public class BridgeLinkLauncher extends Application {
         iconButton.setPrefSize(32, 32);
         iconButton.setMinSize(32, 32);
         iconButton.setMaxSize(32, 32);
-        iconButton.setStyle("-fx-background-color: transparent; -fx-border-color: #cccccc; -fx-border-radius: 4;");
+        iconButton.getStyleClass().add("icon-button");
 
         // Set default icon
         ImageView defaultIconView = new ImageView(LAUNCHER_ICON);
@@ -686,52 +781,102 @@ public class BridgeLinkLauncher extends Application {
         iconRow.getChildren().addAll(iconSelectionLabel, iconButton);
         iconRow.setAlignment(Pos.CENTER_LEFT);
 
-        configBox.getChildren().addAll(groupRow, addressRow, credentialsRow, javaHomeRow, heapSizeRow, jvmOptionsRow, notesRow, consoleRow, securityRow, sshTunnelRow, iconRow);
+        serverSection.getChildren().addAll(groupRow, addressRow, credentialsRow, notesRow);
+        runtimeSection.getChildren().addAll(javaHomeRow, heapSizeRow, jvmOptionsRow);
+        accessSection.getChildren().addAll(sshTunnelRow, securityRow, consoleRow, iconRow);
 
-        // Progress Section (unchanged)
-        Separator separator = new Separator();
+        // Empty state shown when no connection is selected.
+        emptyState = new VBox(12);
+        emptyState.getStyleClass().add("empty-state");
+        ImageView emptyLogo = new ImageView(LAUNCHER_ICON);
+        emptyLogo.setFitHeight(48);
+        emptyLogo.setPreserveRatio(true);
+        Label emptyTitle = new Label("No server selected");
+        emptyTitle.getStyleClass().add("empty-title");
+        Label emptyHint = new Label("Pick a connection from the list, or create a new one to get started.");
+        emptyHint.getStyleClass().add("empty-hint");
+        Button emptyNewButton = new Button("New Connection");
+        emptyNewButton.getStyleClass().add("btn-primary");
+        emptyNewButton.setOnAction(e -> createNewConnection());
+        emptyState.getChildren().addAll(emptyLogo, emptyTitle, emptyHint, emptyNewButton);
+
+        detailForm = new VBox(0);
+        detailForm.getChildren().addAll(profileToolbar, serverSection, runtimeSection, accessSection);
+        // Start on the empty state; selecting a connection reveals the form.
+        detailForm.setVisible(false);
+        detailForm.setManaged(false);
+
+        VBox detail = new VBox(0);
+        detail.getStyleClass().add("detail");
+        detail.getChildren().addAll(detailForm, emptyState);
+        ScrollPane detailScroll = new ScrollPane(detail);
+        detailScroll.getStyleClass().add("detail-scroll");
+        detailScroll.setFitToWidth(true);
+        detailScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        /* ---------- Action bar (bottom): Time Out strip + launch ---------- */
         progressBar = new ProgressBar(0.0);
         progressBar.setMaxWidth(Double.MAX_VALUE);
+        progressIndicator = new ProgressIndicator(-1.0);
+        progressIndicator.setPrefHeight(20.0);
+        progressText = new Text("Requesting main JNLP...");
+
+        // Launch status row (progress bar + spinner + message), shown while launching.
+        statusRow = new HBox(10, progressBar, progressIndicator, progressText);
+        statusRow.getStyleClass().add("status-row");
+        HBox.setHgrow(progressBar, Priority.ALWAYS);
+
         launchButton = new Button("Launch");
+        launchButton.getStyleClass().add("btn-primary");
         launchButton.setOnAction(e -> launch());
         cancelButton = new Button("Cancel");
         cancelButton.setOnAction(e -> cancelLaunch());
         cancelButton.setVisible(false);
         StackPane buttonStack = new StackPane(launchButton, cancelButton);
-        buttonStack.setAlignment(Pos.CENTER);
-        HBox progressBarBox = new HBox(10, progressBar, buttonStack);
-        HBox.setHgrow(progressBar, Priority.ALWAYS);
-        progressIndicator = new ProgressIndicator(-1.0);
-        progressIndicator.setPrefHeight(20.0);
-        progressText = new Text("Requesting main JNLP...");
-        VBox progressBox = new VBox(10, separator, progressBarBox, progressIndicator, progressText);
-        setProgressControlsVisible(false);
+        buttonStack.setAlignment(Pos.CENTER_RIGHT);
 
-        // Bottom Section (unchanged)
-        HBox bottomBox = new HBox(10);
+        // Time Out readiness strip. ADDRESS is the only hard gate; CREDENTIALS,
+        // RUNTIME and TUNNEL are informational — the tunnel never blocks launch.
+        HBox readinessStrip = new HBox(16);
+        readinessStrip.getStyleClass().add("readiness-strip");
+        addressCheckState = makeCheckItem(readinessStrip, "ADDRESS");
+        credentialCheckState = makeCheckItem(readinessStrip, "CREDENTIALS");
+        runtimeCheckState = makeCheckItem(readinessStrip, "RUNTIME");
+        tunnelCheckState = makeCheckItem(readinessStrip, "TUNNEL");
+
         closeWindowCheckBox = new CheckBox("Close after launch");
+
+        // Update notice strip (hidden until a newer release is found).
         updateStatusLabel = new Label("");
-        updateStatusLabel.setVisible(false);
-        updateStatusLabel.setStyle("-fx-text-fill: #b8860b; -fx-font-weight: bold;");
+        updateStatusLabel.getStyleClass().add("update-notice-label");
         openReleaseButton = new Button("Download");
-        openReleaseButton.setVisible(false);
         openReleaseButton.setOnAction(e -> {
             if (lastReleaseUrl != null) {
                 getHostServices().showDocument(lastReleaseUrl);
             }
         });
         dismissUpdateButton = new Button("\u00D7");
-        dismissUpdateButton.setVisible(false);
-        dismissUpdateButton.setOnAction(e -> {
-            updateStatusLabel.setVisible(false);
-            openReleaseButton.setVisible(false);
-            dismissUpdateButton.setVisible(false);
-        });
-        bottomBox.getChildren().addAll(closeWindowCheckBox, updateStatusLabel, openReleaseButton, dismissUpdateButton);
-        bottomBox.setAlignment(Pos.CENTER_LEFT);
+        dismissUpdateButton.setOnAction(e -> setUpdateNoticeVisible(false));
+        updateNotice = new HBox(8);
+        updateNotice.getStyleClass().add("update-notice");
+        updateNotice.getChildren().addAll(updateStatusLabel, openReleaseButton, dismissUpdateButton);
+        updateNotice.setVisible(false);
+        updateNotice.setManaged(false);
 
-        // Assemble layout
-        root.getChildren().addAll(connectionsSection, configBox, progressBox, bottomBox);
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+        HBox mainRow = new HBox(16, readinessStrip, actionSpacer, closeWindowCheckBox, buttonStack);
+        mainRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox actionbar = new VBox(8);
+        actionbar.getStyleClass().add("actionbar");
+        actionbar.getChildren().addAll(updateNotice, statusRow, mainRow);
+        setProgressControlsVisible(false);
+
+        // Assemble shell: rail | detail / action bar.
+        root.setLeft(rail);
+        root.setCenter(detailScroll);
+        root.setBottom(actionbar);
 
         // Select first connection
         if (!connectionsList.isEmpty()) {
@@ -741,18 +886,13 @@ public class BridgeLinkLauncher extends Application {
             }
         }
 
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, 980, 640);
+        applyThemeToScene(scene); // stylesheet + current theme class on the root node
         stage.setScene(scene);
         stage.setOnCloseRequest(this::handleWindowCloseRequest);
         stage.show();
 
-        // Fit the window to its content on startup so every section — and a
-        // usable chunk of the connections tree — is visible; users can still
-        // resize freely afterwards.
-        root.layout();
-        stage.setWidth(Math.max(root.prefWidth(-1), 800));
-        stage.setHeight(Math.max(root.prefHeight(-1), 640));
-        stage.setMinWidth(720);
+        stage.setMinWidth(860);
         stage.setMinHeight(560);
 
         // Capture the initial snapshot so the dirty-tracking (Save/Revert) works
@@ -760,6 +900,10 @@ public class BridgeLinkLauncher extends Application {
         takeFormSnapshot();
         saveButton.setDisable(true);
         revertButton.setDisable(true);
+
+        // Initialize readiness strip + Launch availability for the current
+        // (possibly empty) selection — otherwise they stay at their defaults.
+        refreshActionStates();
 
         newButton.requestFocus();
 
@@ -775,19 +919,158 @@ public class BridgeLinkLauncher extends Application {
         });
     }
 
-    /** Shows the "new version available" banner in the bottom bar. */
+    /** Shows the "new version available" notice strip in the action bar. */
     private void showUpdateBanner(String latestVersion, String releaseUrl) {
         lastReleaseUrl = releaseUrl;
         updateStatusLabel.setText("New version available: v" + latestVersion);
-        updateStatusLabel.setVisible(true);
-        openReleaseButton.setVisible(true);
-        dismissUpdateButton.setVisible(true);
+        setUpdateNoticeVisible(true);
+    }
+
+    /** Shows/hides the "new version" notice strip in the action bar. */
+    private void setUpdateNoticeVisible(boolean visible) {
+        if (updateNotice == null) return;
+        updateNotice.setVisible(visible);
+        updateNotice.setManaged(visible);
+    }
+
+    /* ================= "Time Out" shell helpers ================= */
+
+    /** Section header label for the detail pane. */
+    private Label sectionHeader(String text) {
+        Label l = new Label(text);
+        l.getStyleClass().add("section-title");
+        return l;
+    }
+
+    /** Adds one "LABEL + state" item to the readiness strip; returns the state label. */
+    private Label makeCheckItem(HBox strip, String labelText) {
+        HBox item = new HBox(5);
+        item.getStyleClass().add("check-item");
+        Label l = new Label(labelText);
+        l.getStyleClass().add("check-label");
+        Label state = new Label("");
+        state.getStyleClass().add("check-state-info");
+        item.getChildren().addAll(l, state);
+        strip.getChildren().add(item);
+        return state;
+    }
+
+    private enum CheckKind { CLEARED, FLAGGED, INFO }
+
+    /** Sets a readiness-strip state label with its visual kind. */
+    private void setCheckState(Label state, String text, CheckKind kind) {
+        if (state == null) return;
+        state.setText(text);
+        state.getStyleClass().removeAll("check-state-cleared", "check-state-flagged", "check-state-info");
+        switch (kind) {
+            case CLEARED:  state.getStyleClass().add("check-state-cleared"); break;
+            case FLAGGED:  state.getStyleClass().add("check-state-flagged"); break;
+            default:       state.getStyleClass().add("check-state-info");    break;
+        }
+    }
+
+    /** Refreshes the Time Out readiness strip from the current form state. */
+    private void updateReadinessStrip() {
+        if (addressCheckState == null) return; // strip not built yet
+
+        String address = addressTextField.getText().trim();
+        setCheckState(addressCheckState, address.isEmpty() ? "missing" : "ready",
+                address.isEmpty() ? CheckKind.FLAGGED : CheckKind.CLEARED);
+
+        boolean credsSet = !usernameTextField.getText().trim().isEmpty()
+                || (passwordField.getText() != null && !passwordField.getText().isEmpty());
+        setCheckState(credentialCheckState, credsSet ? "set" : "not set", CheckKind.INFO);
+
+        String runtime;
+        if (customJavaRadio.isSelected()) {
+            runtime = customJavaTextField.getText().trim().isEmpty() ? "custom — path missing" : "custom JDK";
+        } else {
+            BundledJava bj = bundledJavaCombo.getValue();
+            runtime = (bj != null ? bj.toString() : "bundled") + " · " + heapSizeCombo.getValue().toString();
+        }
+        setCheckState(runtimeCheckState, runtime, CheckKind.INFO);
+
+        // Tunnel is informational only: its presence or absence never blocks launch.
+        String tunnelCmd = sshTunnelTextField.getText().trim();
+        if (tunnelCmd.isEmpty()) {
+            setCheckState(tunnelCheckState, "none", CheckKind.INFO);
+        } else if (tunnelTestedOk) {
+            setCheckState(tunnelCheckState, "tested OK", CheckKind.CLEARED);
+        } else {
+            setCheckState(tunnelCheckState, "configured — not tested", CheckKind.INFO);
+        }
+    }
+
+    /** Launch availability: a selected connection with a non-empty address. */
+    private void updateLaunchState() {
+        if (launchButton == null || isLaunching) return;
+        TreeItem<Connection> sel = connectionsTreeView.getSelectionModel().getSelectedItem();
+        boolean isConn = sel != null && sel.getValue() != null && sel.getValue().getAddress() != null;
+        boolean ready = isConn && !addressTextField.getText().trim().isEmpty();
+        if (ready && !launchWasReady) {
+            igniteLaunchButton(); // the one authored moment: Launch ignites when cleared
+        }
+        launchWasReady = ready;
+        launchButton.setDisable(!ready);
+    }
+
+    /** Subtle ignition pulse on the Launch button (ease-out, auto-reversing). */
+    private void igniteLaunchButton() {
+        ScaleTransition pulse = new ScaleTransition(Duration.millis(320), launchButton);
+        pulse.setFromX(1.0);
+        pulse.setFromY(1.0);
+        pulse.setToX(1.04);
+        pulse.setToY(1.04);
+        pulse.setCycleCount(2);
+        pulse.setAutoReverse(true);
+        pulse.setInterpolator(Interpolator.EASE_OUT);
+        pulse.play();
+    }
+
+    /** Refreshes readiness strip + Launch availability (call on any form change). */
+    private void refreshActionStates() {
+        updateReadinessStrip();
+        updateLaunchState();
+    }
+
+    /* ================= Theme (light/dark) ================= */
+
+    private static final String THEME_PREF_KEY = "ui.theme.dark";
+
+    public static boolean isDarkTheme() {
+        return java.util.prefs.Preferences.userNodeForPackage(MirtoLinkLauncher.class)
+                .getBoolean(THEME_PREF_KEY, false);
+    }
+
+    public static void setDarkTheme(boolean dark) {
+        java.util.prefs.Preferences.userNodeForPackage(MirtoLinkLauncher.class)
+                .putBoolean(THEME_PREF_KEY, dark);
+    }
+
+    /** Applies the Mirto stylesheet + current theme to any scene (dialogs included). */
+    public static void applyThemeToScene(Scene scene) {
+        String css = MirtoLinkLauncher.class.getResource("/css/mirto.css").toExternalForm();
+        if (!scene.getStylesheets().contains(css)) {
+            scene.getStylesheets().add(css);
+        }
+        javafx.scene.Node root = scene.getRoot();
+        root.getStyleClass().removeAll("theme-light", "theme-dark");
+        root.getStyleClass().add(isDarkTheme() ? "theme-dark" : "theme-light");
+    }
+
+    /** Switches the main window theme live (persisted). */
+    private void applyTheme(boolean dark) {
+        setDarkTheme(dark);
+        if (shellRoot != null) {
+            shellRoot.getStyleClass().removeAll("theme-light", "theme-dark");
+            shellRoot.getStyleClass().add(dark ? "theme-dark" : "theme-light");
+        }
     }
 
     private void initializeDirectories() {
         // Get the application directory (where the JAR or class file resides)
         try {
-            String jarPath = BridgeLinkLauncher.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+            String jarPath = MirtoLinkLauncher.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
             appDir = new File(jarPath).getParent(); // Parent directory of the JAR/class file
             appDir = URLDecoder.decode(appDir, StandardCharsets.UTF_8.name()); // Decode path
         } catch (Exception e) {
@@ -1316,6 +1599,10 @@ public class BridgeLinkLauncher extends Application {
                 alert.initOwner(primaryStage);
                 alert.showAndWait();
                 sshTunnelTestButton.setDisable(false);
+                // Reflect the outcome in the readiness strip (informational only —
+                // a failed test never blocks launch, it just stays unverified).
+                tunnelTestedOk = (resultType == Alert.AlertType.INFORMATION);
+                updateReadinessStrip();
             });
         }, "SSH Tunnel Test");
         t.setDaemon(true);
@@ -1579,9 +1866,10 @@ public class BridgeLinkLauncher extends Application {
     }
 
     private void setProgressControlsVisible(boolean visible) {
-        progressBar.setVisible(visible);
-        progressIndicator.setVisible(visible);
-        progressText.setVisible(visible);
+        if (statusRow != null) {
+            statusRow.setVisible(visible);
+            statusRow.setManaged(visible);
+        }
         launchButton.setVisible(!visible);
         cancelButton.setVisible(visible);
     }
@@ -1750,6 +2038,9 @@ public class BridgeLinkLauncher extends Application {
     }
 
     private void updateSaveButtonState() {
+        // Keep the Time Out strip and Launch availability in sync with every form change.
+        refreshActionStates();
+
         if (isLaunching) {
             this.saveButton.setDisable(true);
             return;
@@ -1977,10 +2268,10 @@ public class BridgeLinkLauncher extends Application {
         SSLBypass.disableSSLVerification();
         // Keep a reference to the running application so the shutdown hook can
         // terminate any SSH tunnel process spawned by the launcher (Java 8 API only).
-        RUNTIME_APP_HOLDER = new BridgeLinkLauncher[1];
-        final BridgeLinkLauncher[] appHolder = RUNTIME_APP_HOLDER;
+        RUNTIME_APP_HOLDER = new MirtoLinkLauncher[1];
+        final MirtoLinkLauncher[] appHolder = RUNTIME_APP_HOLDER;
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            BridgeLinkLauncher app = appHolder[0];
+            MirtoLinkLauncher app = appHolder[0];
             if (app != null) {
                 try {
                     app.stopTunnels();
@@ -1989,15 +2280,15 @@ public class BridgeLinkLauncher extends Application {
                 }
             }
         }, "ssh-tunnel-cleanup"));
-        Application.launch(BridgeLinkLauncher.class, args);
+        Application.launch(MirtoLinkLauncher.class, args);
     }
 
     /** Shared holder so {@link #start} and the shutdown hook in {@link #main} can meet. */
-    private static BridgeLinkLauncher[] RUNTIME_APP_HOLDER;
+    private static MirtoLinkLauncher[] RUNTIME_APP_HOLDER;
 
     @SuppressWarnings("unchecked")
-    private static BridgeLinkLauncher[] getAppHolder() {
-        BridgeLinkLauncher[] holder = RUNTIME_APP_HOLDER;
-        return holder != null ? holder : new BridgeLinkLauncher[1];
+    private static MirtoLinkLauncher[] getAppHolder() {
+        MirtoLinkLauncher[] holder = RUNTIME_APP_HOLDER;
+        return holder != null ? holder : new MirtoLinkLauncher[1];
     }
 }

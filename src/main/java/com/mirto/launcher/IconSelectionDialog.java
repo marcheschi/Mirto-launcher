@@ -187,6 +187,7 @@ public class IconSelectionDialog {
         root.getChildren().addAll(titleLabel, scrollPane, buttonBox);
 
         Scene scene = new Scene(root, 450, 300);
+        MirtoLinkLauncher.applyThemeToScene(scene); // inherit the active Mirto theme
         iconStage.setScene(scene);
         iconStage.showAndWait();
     }

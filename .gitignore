@@ -11,8 +11,9 @@ dependency-reduced-pom.xml
 data/
 cache/
 
-# Logback rolling log file (runtime artifact)
+# Logback rolling log files + rotated/compressed archives (runtime artifacts)
 mirto-launcher.log*
+*.log.gz
 
 # Windows release build outputs (assembled app, embedded JRE, installer)
 build/windows/app/
@@ -22,6 +23,9 @@ build/windows/output/
 # Linux packages build outputs (deb/AppImage workdirs and artifacts)
 build/linux/work/
 build/linux/output/
+
+# Design-tooling state (impeccable skill)
+.impeccable/
 
 # OS / editor cruft
 .DS_Store

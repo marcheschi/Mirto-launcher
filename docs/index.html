@@ -158,6 +158,14 @@
   .callout b { color: #a7f3d0; }
   .callout p { color: var(--muted); font-size: 0.94rem; }
 
+  /* ---------- Preview / screenshots ---------- */
+  .shot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .shot { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 14px; transition: transform 0.2s, border-color 0.25s; }
+  .shot:hover { transform: translateY(-5px); border-color: rgba(16, 185, 129, 0.45); }
+  .shot img { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 50px rgba(2,8,20,0.6); }
+  .shot figcaption { margin-top: 12px; color: var(--muted); font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
+  .shot .tag { padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px; background: rgba(16,185,129,0.12); color: #a7f3d0; border: 1px solid rgba(16,185,129,0.3); white-space: nowrap; }
+
   /* ---------- Footer ---------- */
   footer { padding: 40px 0 52px; text-align: center; color: var(--muted); font-size: 0.88rem; }
   footer .links { display: flex; gap: 22px; justify-content: center; margin-bottom: 14px; flex-wrap: wrap; }
@@ -177,7 +185,7 @@
     .dl-wide { grid-column: span 2; }
   }
   @media (max-width: 600px) {
-    .features-grid, .dl-grid { grid-template-columns: 1fr; }
+    .features-grid, .dl-grid, .shot-grid { grid-template-columns: 1fr; }
     .dl-wide { grid-column: span 1; flex-direction: column; align-items: flex-start; }
     .nav-links a:not(.nav-cta) { display: none; }
   }
@@ -190,6 +198,7 @@
     <a class="brand" href="#top"><span class="brand-mark">M</span>Mirto-Launcher</a>
     <div class="nav-links">
       <a href="#funzionalita">Funzionalità</a>
+      <a href="#anteprima">Anteprima</a>
       <a href="#download">Download</a>
       <a class="nav-cta" href="https://github.com/marcheschi/Mirto-launcher" target="_blank" rel="noopener">GitHub</a>
     </div>
@@ -198,11 +207,11 @@
 
 <header id="top" class="container hero">
   <div>
-    <span class="badge fade-up d1"><span class="dot"></span>v1.9.4 · Open Source MPL-2.0</span>
+    <span class="badge fade-up d1"><span class="dot"></span>v1.9.5 · Open Source MPL-2.0</span>
     <h1 class="fade-up d2">Il launcher per<br><span class="grad">BridgeLink &amp; Mirth Connect</span></h1>
     <p class="lead fade-up d3">Connessioni remote sicure con tunnel SSH, credenziali cifrate AES-GCM nel keyring di sistema e runtime JavaFX 17 già incluso. Un unico click per avviare il tuo server — su Windows, Linux e macOS.</p>
     <div class="cta-row fade-up d4">
-      <a class="btn btn-primary" href="https://github.com/marcheschi/Mirto-launcher/releases/tag/v1.9.4" target="_blank" rel="noopener">Scarica v1.9.4</a>
+      <a class="btn btn-primary" href="https://github.com/marcheschi/Mirto-launcher/releases/tag/v1.9.5" target="_blank" rel="noopener">Scarica v1.9.5</a>
       <a class="btn btn-ghost" href="https://github.com/marcheschi/Mirto-launcher" target="_blank" rel="noopener">Vedi il codice →</a>
     </div>
   </div>
@@ -321,6 +330,11 @@
         <h3>Console Java integrata</h3>
         <p>Visualizza in tempo reale il log dell'applicazione Mirth/BridgeLink senza aprire terminali separati: utile per debug e monitoraggio.</p>
       </div>
+      <div class="feature">
+        <div class="icon">&#127912;</div>
+        <h3>Interfaccia riprogettata</h3>
+        <p>Nuova shell con pannello a sezioni, tema chiaro/scuro commutabile (ricordato al prossimo avvio) e una readiness strip che mostra a colpo d'occhio se il profilo è pronto al lancio.</p>
+      </div>
     </div>
 
     <div class="callout">
@@ -330,53 +344,71 @@
   </div>
 </section>
 
+<section id="anteprima" class="block">
+  <div class="container">
+    <span class="kicker">Anteprima</span>
+    <h2>Un'interfaccia pensata per il lancio sicuro</h2>
+    <p class="section-sub">La nuova interfaccia "Time Out" guida la verifica pre-lancio: connessioni a sinistra, dettagli raggruppati a destra e una readiness strip che conferma ogni punto critico prima di premere Launch. Disponibile in tema chiaro e scuro.</p>
+    <div class="shot-grid">
+      <figure class="shot fade-up d1">
+        <img src="screenshots/dark-theme.png" alt="Mirto-Launcher in tema scuro con readiness strip" loading="lazy">
+        <figcaption><span class="tag">Dark</span> Rail navy, accenti arancio Mirto, readiness strip in basso</figcaption>
+      </figure>
+      <figure class="shot fade-up d2">
+        <img src="screenshots/light-theme.png" alt="Mirto-Launcher in tema chiaro con readiness strip" loading="lazy">
+        <figcaption><span class="tag">Light</span> Fondo avorio, testo navy, stessa gerarchia visiva</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
 <section id="download" class="block">
   <div class="container">
     <span class="kicker">Download</span>
-    <h2>Scegli la tua piattaforma — v1.9.4</h2>
+    <h2>Scegli la tua piattaforma — v1.9.5</h2>
     <p class="section-sub">Tutti i pacchetti includono Java 17 + JavaFX: non serve installare nulla.</p>
     <div class="dl-grid">
-      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.4/MirtoLauncher-1.9.4-windows-x64-setup.exe" target="_blank" rel="noopener">
+      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.5/MirtoLauncher-1.9.5-windows-x64-setup.exe" target="_blank" rel="noopener">
         <span class="os">Windows x64</span>
         <h3>Installer .exe</h3>
         <p>Installazione per utente, senza diritti di amministratore.</p>
-        <span class="file">MirtoLauncher-1.9.4-windows-x64-setup.exe</span>
+        <span class="file">MirtoLauncher-1.9.5-windows-x64-setup.exe</span>
       </a>
-      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.4/mirto-launcher_1.9.4_amd64.deb" target="_blank" rel="noopener">
+      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.5/mirto-launcher_1.9.5_amd64.deb" target="_blank" rel="noopener">
         <span class="os">Linux · Debian/Ubuntu</span>
         <h3>Pacchetto .deb</h3>
         <p>Comando <code>mirto-launcher</code>, voce nel menu e icone incluse.</p>
-        <span class="file">mirto-launcher_1.9.4_amd64.deb</span>
+        <span class="file">mirto-launcher_1.9.5_amd64.deb</span>
       </a>
-      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.4/Mirto-Launcher-1.9.4-x86_64.AppImage" target="_blank" rel="noopener">
+      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.5/Mirto-Launcher-1.9.5-x86_64.AppImage" target="_blank" rel="noopener">
         <span class="os">Linux · qualsiasi distro</span>
         <h3>AppImage portatile</h3>
         <p><code>chmod +x</code> ed esegui: ideale senza root.</p>
-        <span class="file">Mirto-Launcher-1.9.4-x86_64.AppImage</span>
+        <span class="file">Mirto-Launcher-1.9.5-x86_64.AppImage</span>
       </a>
-      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.4/Mirto-Launcher-1.9.4-macos_x86_64.dmg" target="_blank" rel="noopener">
+      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.5/Mirto-Launcher-1.9.5-macos_x86_64.dmg" target="_blank" rel="noopener">
         <span class="os">macOS · Intel</span>
         <h3>DMG .app</h3>
         <p>Trascina in Applicazioni e avvia.</p>
-        <span class="file">Mirto-Launcher-1.9.4-macos_x86_64.dmg</span>
+        <span class="file">Mirto-Launcher-1.9.5-macos_x86_64.dmg</span>
       </a>
-      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.4/Mirto-Launcher-1.9.4-macos_arm64.dmg" target="_blank" rel="noopener">
+      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.5/Mirto-Launcher-1.9.5-macos_arm64.dmg" target="_blank" rel="noopener">
         <span class="os">macOS · Apple Silicon</span>
         <h3>DMG .app</h3>
         <p>Nativo per M1/M2/M3.</p>
-        <span class="file">Mirto-Launcher-1.9.4-macos_arm64.dmg</span>
+        <span class="file">Mirto-Launcher-1.9.5-macos_arm64.dmg</span>
       </a>
-      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.4/mirto-launcher-1.9.4.jar" target="_blank" rel="noopener">
+      <a class="dl-card" href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.5/mirto-launcher-1.9.5.jar" target="_blank" rel="noopener">
         <span class="os">Cross-platform</span>
         <h3>Jar eseguibile</h3>
-        <p><code>java -jar mirto-launcher-1.9.4.jar</code> con qualsiasi JDK 17+.</p>
-        <span class="file">mirto-launcher-1.9.4.jar</span>
+        <p><code>java -jar mirto-launcher-1.9.5.jar</code> con qualsiasi JDK 17+.</p>
+        <span class="file">mirto-launcher-1.9.5.jar</span>
       </a>
     </div>
 
     <div class="callout" style="margin-top:24px;">
       <span class="icon">&#128187;</span>
-      <p><b>Nessuna Java installata?</b> Su Linux usa gli helper della release: <a href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.4/bridgelink-starter.sh" target="_blank" rel="noopener">bridgelink-starter.sh</a> avvia l'app e provisiona automaticamente un runtime Zulu FX 17; <a href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.4/setup-jre.sh" target="_blank" rel="noopener">setup-jre.sh</a> lo installa in <code>./jre</code>.</p>
+      <p><b>Nessuna Java installata?</b> Su Linux usa gli helper della release: <a href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.5/bridgelink-starter.sh" target="_blank" rel="noopener">bridgelink-starter.sh</a> avvia l'app e provisiona automaticamente un runtime Zulu FX 17; <a href="https://github.com/marcheschi/Mirto-launcher/releases/download/v1.9.5/setup-jre.sh" target="_blank" rel="noopener">setup-jre.sh</a> lo installa in <code>./jre</code>.</p>
     </div>
   </div>
 </section>

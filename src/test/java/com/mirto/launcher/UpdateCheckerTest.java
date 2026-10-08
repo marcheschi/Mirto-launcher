@@ -69,7 +69,7 @@ class UpdateCheckerTest {
     void newerReleaseIsReported() {
         // Always one patch above the running version, so this keeps working as
         // FALLBACK_VERSION moves forward.
-        String[] p = BridgeLinkLauncher.FALLBACK_VERSION.split("\\.");
+        String[] p = MirtoLinkLauncher.FALLBACK_VERSION.split("\\.");
         String newer = p[0] + "." + p[1] + "." + (Integer.parseInt(p[p.length - 1]) + 1);
         serve("/api", 200,
                 "{\"tag_name\":\"v" + newer + "\",\"html_url\":\"https://github.com/x/y/releases/tag/v" + newer + "\"}");
@@ -113,14 +113,14 @@ class UpdateCheckerTest {
         String v = UpdateChecker.currentVersion();
         assertTrue(v.matches("\\d+\\.\\d+\\.\\d+.*"));
         // Single source of truth: FALLBACK_VERSION is kept in sync with pom.xml.
-        assertEquals(BridgeLinkLauncher.FALLBACK_VERSION, v);
+        assertEquals(MirtoLinkLauncher.FALLBACK_VERSION, v);
     }
 
     @Test
     void runningVersionIsNotReportedAsUpdate() {
         // Regression: the banner must not suggest an update to the version that
         // is already running (happened when the fallback constant drifted).
-        serve("/api", 200, "{\"tag_name\":\"v" + BridgeLinkLauncher.FALLBACK_VERSION + "\",\"html_url\":\"u\"}");
+        serve("/api", 200, "{\"tag_name\":\"v" + MirtoLinkLauncher.FALLBACK_VERSION + "\",\"html_url\":\"u\"}");
         UpdateChecker checker = new UpdateChecker(base + "/api");
         assertFalse(checker.checkNow().updateAvailable);
     }

@@ -115,6 +115,7 @@ public class ExportOptionsDialog {
         root.getChildren().addAll(promptLabel, scopeBox, credentialCheckBox, buttonBox);
 
         Scene scene = new Scene(root, 400, 230);
+        MirtoLinkLauncher.applyThemeToScene(scene); // inherit the active Mirto theme
         dialogStage.setScene(scene);
         dialogStage.showAndWait();
 

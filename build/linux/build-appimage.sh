@@ -116,7 +116,7 @@ Categories=Development;Network;
 # Must match the WM_CLASS JavaFX actually reports (the main class), otherwise the
 # dock/alt-tab cannot associate the running window with this entry and shows a
 # generic icon + raw class name.
-StartupWMClass=com.mirto.launcher.BridgeLinkLauncher
+StartupWMClass=com.mirto.launcher.MirtoLinkLauncher
 X-AppImage-Version=$VERSION
 DESKTOP
 

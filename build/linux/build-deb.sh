@@ -124,7 +124,7 @@ Categories=Development;Network;
 # Must match the WM_CLASS JavaFX actually reports for this app (the main class),
 # otherwise the dock/alt-tab cannot associate the running window with this entry
 # and falls back to a generic icon + raw class name.
-StartupWMClass=com.mirto.launcher.BridgeLinkLauncher
+StartupWMClass=com.mirto.launcher.MirtoLinkLauncher
 DESKTOP
 chmod 644 "$DESKTOP_DIR/mirto-launcher.desktop"
 
