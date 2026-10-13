@@ -27,6 +27,18 @@ public class SshTunnel {
     private static final Pattern HOST_PATTERN =
             Pattern.compile("^[A-Za-z0-9_.@%+-]+$");
     // values accepted by -N/-f/-p/-i options
+    /** Result of parsing a tunnel command: either a valid tunnel or an error message. */
+    public static final class ParseResult {
+        public final SshTunnel tunnel;
+        public final String error;
+        public ParseResult(SshTunnel tunnel, String error) {
+            this.tunnel = tunnel;
+            this.error = error;
+        }
+        public boolean isValid() { return error == null; }
+        public static ParseResult ok(SshTunnel t) { return new ParseResult(t, null); }
+        public static ParseResult error(String msg) { return new ParseResult(null, msg); }
+    }
     private static final Pattern PORT_OR_FILE_PATTERN =
             Pattern.compile("^\\d{1,5}$|^[^\\s]+$");
 
@@ -45,71 +57,8 @@ public class SshTunnel {
      * human-readable error message describing what is wrong.
      */
     public static String validate(String command) {
-        if (StringUtils.isBlank(command)) {
-            return "The SSH tunnel command is empty.";
-        }
-        List<String> tokens = tokenize(command.trim());
-        if (tokens.isEmpty() || !tokens.get(0).equalsIgnoreCase("ssh")) {
-            return "The command must start with \"ssh\".";
-        }
-
-        SshTunnel tunnel = new SshTunnel();
-        boolean forwardFound = false;
-        for (int i = 1; i < tokens.size(); i++) {
-            String t = tokens.get(i);
-            if (t.equals("-L")) {
-                if (forwardFound) {
-                    return "Only one -L forwarding is supported per connection.";
-                }
-                if (i + 1 >= tokens.size()) {
-                    return "-L requires the forwarding spec: localport:host:hostport";
-                }
-                String spec = tokens.get(++i);
-                Matcher m = FORWARD_PATTERN.matcher(spec);
-                if (!m.matches()) {
-                    return "Invalid -L spec \"" + spec + "\". Expected format: localport:host:hostport (e.g. 8443:mirth.prova.it:8443)";
-                }
-                applyForwardSpec(tunnel, spec, m);
-                if (tunnel.localPort == 0 || tunnel.localPort > 65535
-                        || tunnel.remotePort == 0 || tunnel.remotePort > 65535) {
-                    return "Ports in the -L spec must be between 1 and 65535.";
-                }
-                forwardFound = true;
-            } else if (t.equals("-p")) {
-                if (i + 1 >= tokens.size() || !PORT_OR_FILE_PATTERN.matcher(tokens.get(i + 1)).matches()
-                        || !tokens.get(i + 1).matches("\\d{1,5}")) {
-                    return "-p requires a numeric port.";
-                }
-                tunnel.sshPort = Integer.parseInt(tokens.get(++i));
-                if (tunnel.sshPort < 1 || tunnel.sshPort > 65535) {
-                    return "-p port must be between 1 and 65535.";
-                }
-            } else if (t.equals("-i")) {
-                if (i + 1 >= tokens.size() || StringUtils.isBlank(tokens.get(i + 1))) {
-                    return "-i requires an identity file path.";
-                }
-                tunnel.identityFile = tokens.get(++i);
-            } else if (t.equals("-N")) {
-                tunnel.doNotExecute = true;
-            } else if (t.equals("-f")) {
-                tunnel.forkAfterAuth = true;
-            } else if (t.startsWith("-")) {
-                return "Unsupported ssh option \"" + t + "\". Supported: -L, -p, -i, -N, -f";
-            } else {
-                if (StringUtils.isNotBlank(tunnel.jumpHost)) {
-                    return "Unexpected extra argument \"" + t + "\" after the jump host.";
-                }
-                if (!HOST_PATTERN.matcher(t).matches()) {
-                    return "Invalid jump host \"" + t + "\". Expected user@host or host.";
-                }
-                tunnel.jumpHost = t;
-            }
-        }
-
-        if (!forwardFound) {
-            return "Missing -L forwarding (e.g. -L 8443:mirth.prova.it:8443).";
-        }
-        return null; // valid
+        ParseResult result = parse(command);
+        return result.error;
     }
 
     /**

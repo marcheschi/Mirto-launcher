@@ -33,6 +33,15 @@ public final class TunnelManager {
                 try {
                     if (spawned.isAlive()) {
                         spawned.destroy();
+                        // Best-effort: wait briefly then force-kill if still alive.
+                        try {
+                            if (!spawned.waitFor(2_000, java.util.concurrent.TimeUnit.MILLISECONDS)
+                                    && spawned.isAlive()) {
+                                spawned.destroyForcibly();
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                 } catch (Throwable ignored) {
                     // best-effort cleanup during JVM shutdown
@@ -104,6 +113,19 @@ public final class TunnelManager {
         tunnelProcess = null;
         if (p != null && p.isAlive()) {
             p.destroy();
+            // destroy() sends SIGTERM (or equivalent) but ssh -N may not die
+            // promptly if stuck on I/O. Wait briefly and force-kill if still alive.
+            try {
+                if (p.waitFor(2_000, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                    return; // exited cleanly
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            if (p.isAlive()) {
+                p.destroyForcibly();
+            }
         }
     }
 }

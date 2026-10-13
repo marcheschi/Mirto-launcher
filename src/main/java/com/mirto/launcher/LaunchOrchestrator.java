@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.net.URL;
 
 /**
  * Coordinates the launch sequence: optional SSH tunnel -&gt; JNLP download -&gt;
@@ -21,7 +22,8 @@ public final class LaunchOrchestrator {
     public interface Listener {
         void status(String message);
         void bar(double value);
-        void launched();
+        /** Called when the app launched successfully. The connection may be null. */
+        void launched(Connection connection);
         void cancelled();
         void failed(Throwable error);
     }
@@ -58,6 +60,7 @@ public final class LaunchOrchestrator {
     private final TunnelManager tunnels;
     private volatile Thread launchThread;
     private volatile DownloadJNLP currentDownload;
+    private volatile java.net.URLConnection currentConnection;
 
     public LaunchOrchestrator(TunnelManager tunnels) {
         this.tunnels = tunnels;
@@ -99,6 +102,7 @@ public final class LaunchOrchestrator {
             listener.status("Downloading JNLP from " + host);
             DownloadJNLP download = new DownloadJNLP(host, req.cacheFolder, req.clearCacheJars);
             currentDownload = download;
+            currentConnection = null; // reset; DownloadJNLP sets this when opening connections
             CodeBase codeBase = download.handle(new Progress() {
                 @Override
                 public void updateProgressBar(double progress) {
@@ -118,7 +122,13 @@ public final class LaunchOrchestrator {
 
             listener.status("Application launched successfully");
             Thread.sleep(1000); // let the UI show success before closing/resetting
-            listener.launched();
+            // Build a lightweight connection snapshot for the callback so the UI
+            // can update lastLaunchedMs without reaching into the UI layer.
+            Connection launchConn = new Connection();
+            launchConn.setName(req.connectionName != null ? req.connectionName : "");
+            launchConn.setId("");
+            launchConn.setLastLaunchedMs(System.currentTimeMillis());
+            listener.launched(launchConn);
         } catch (InterruptedException e) {
             listener.cancelled();
         } catch (Exception e) {
@@ -144,6 +154,18 @@ public final class LaunchOrchestrator {
             DownloadJNLP d = currentDownload;
             if (d != null) {
                 d.cancel();
+            }
+            // Close any open URL connection to unblock InputStream.read() in downloadFile().
+            // Thread.interrupt() does not interrupt java.net socket I/O; closing the
+            // connection causes the blocked read to throw IOException, which DownloadJNLP
+            // converts to InterruptedException via checkCancelled().
+            URLConnection c = currentConnection;
+            if (c != null) {
+                try {
+                    c.getInputStream().close();
+                } catch (IOException ignored) {
+                    // best-effort: the goal is to unblock the read, not to clean up cleanly
+                }
             }
 
             // Give a moment for cancellation to propagate

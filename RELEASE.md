@@ -17,13 +17,13 @@ Two places must stay in sync:
 | File | What to change |
 |---|---|
 | `pom.xml` | `<version>` in the project coordinates |
-| `src/main/java/com/mirto/launcher/BridgeLinkLauncher.java` | `FALLBACK_VERSION` constant (used when the jar manifest has no version) |
+| `src/main/java/com/mirto/launcher/MirtoLinkLauncher.java` | `FALLBACK_VERSION` constant (used when the jar manifest has no version) |
 
 ```bash
 # example: 1.5.0 -> 1.6.0
 sed -i 's|<version>1.5.0</version>|<version>1.6.0</version>|' pom.xml
 sed -i 's|FALLBACK_VERSION = "1.5.0"|FALLBACK_VERSION = "1.6.0"|' \
-    src/main/java/com/mirto/launcher/BridgeLinkLauncher.java
+    src/main/java/com/mirto/launcher/MirtoLinkLauncher.java
 ```
 
 ## 2. Build and verify locally
@@ -44,7 +44,7 @@ installer.
 ## 3. Commit and push
 
 ```bash
-git add pom.xml src/main/java/com/mirto/launcher/BridgeLinkLauncher.java
+git add pom.xml src/main/java/com/mirto/launcher/MirtoLinkLauncher.java
 git commit -m "Bump version to <version>"
 git push origin main
 ```

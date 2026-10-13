@@ -36,6 +36,9 @@ public class DownloadJNLP {
     private String host = "";
     private volatile boolean cancelled = false;
     private boolean clearCacheJars = false;
+    /** Track the currently open URLConnection so LaunchOrchestrator.cancel() can
+     *  close it and unblock the InputStream.read() in downloadFile(). */
+    private volatile java.net.URLConnection currentConnection;
 
     public DownloadJNLP(String host, File cacheFolder, boolean clearCacheJars) {
         if (host.endsWith("/")) {
@@ -52,7 +55,7 @@ public class DownloadJNLP {
 
         String jnlpUrl = host + "/" + "webstart.jnlp";
 
-        log("🔍 Fetching main JNLP from: " + jnlpUrl);
+        log(" Fetching main JNLP from: " + jnlpUrl);
 
         List<File> localJars = new ArrayList<>();
         List<String> arguments = new ArrayList<>();
@@ -82,7 +85,7 @@ public class DownloadJNLP {
                 bridgeVersion = versionNodes.item(0).getTextContent().replaceAll("[^0-9.]", "");
             }
             bridgeVersion = doc.getDocumentElement().getAttribute("version");
-            log("✅ Detected BridgeLink Version: " + bridgeVersion);
+            log(" Detected BridgeLink Version: " + bridgeVersion);
 
             // Extract extension JNLPs
             progress.updateProgressText("Requesting JNLP for extensions...");
@@ -99,9 +102,9 @@ public class DownloadJNLP {
                 extensionJnlpUrls.add(extJnlpUrl);
             }
 
-            log("✅ Found extension JNLPs: " + extensionJnlpUrls);
+            log(" Found extension JNLPs: " + extensionJnlpUrls);
 
-            // ✅ Fetch extension JARs
+            //  Fetch extension JARs
             List<ExtensionInfo> listExtensions = new ArrayList<>();
             for (String extJnlpUrl : extensionJnlpUrls) {
                 checkCancelled("parseExtensionJnlp");
@@ -127,7 +130,7 @@ public class DownloadJNLP {
                 }
             }
         } catch (Exception e) {
-            log("❌ ERROR in handle(): " + e.getMessage());
+            log(" ERROR in handle(): " + e.getMessage());
 
             throw e;
         }
@@ -142,7 +145,7 @@ public class DownloadJNLP {
     }
 
     private ExtensionInfo parseExtensionJnlp(String extJnlpUrl) {
-        log("🔍 Fetching Extension JNLP: " + extJnlpUrl);
+        log(" Fetching Extension JNLP: " + extJnlpUrl);
 
         try {
             URL url = new URL(extJnlpUrl);
@@ -162,11 +165,11 @@ public class DownloadJNLP {
                 mapJars.put(jarUrl, new File(jarPath).getName() + "|" + jarElementSha256);
             }
 
-            log("✅ Extension JARs for " + extensionName + ": " + mapJars.toString());
+            log(" Extension JARs for " + extensionName + ": " + mapJars.toString());
 
             return new ExtensionInfo(extensionName, mapJars);
         } catch (Exception e) {
-            log("❌ ERROR fetching extension JNLP: " + e.getMessage());
+            log(" ERROR fetching extension JNLP: " + e.getMessage());
         }
 
         return new ExtensionInfo();
@@ -189,7 +192,7 @@ public class DownloadJNLP {
         int numOfJars = coreJarInfos.size() + listExtensions.size();
         int cntNum = 0;
 
-        // ✅ Download Core JARs
+        //  Download Core JARs
         for (JarInfo jarInfo : coreJarInfos) {
             checkCancelled("core JAR download");
             String correctedJarUrl = baseUrl + "/client-lib/" + new File(jarInfo.getHref()).getName();
@@ -208,10 +211,10 @@ public class DownloadJNLP {
                 if (localFile.exists() && jarInfo.getSha256() != null && !jarInfo.getSha256().trim().isEmpty()) {
                     try {
                         String localHash = calculateSha256(localFile);
-                        log("🔍 Local file SHA-256:    '" + localHash + "'");
-                        log("🔍 Expected SHA-256:      '" + jarInfo.getSha256() + "'");
-                        if (jarInfo.getSha256().trim().equals(localHash)) {
-                            log("✅ Skipping core JAR (hash matches): " + localFile.getName());
+                        log(" Local file SHA-256:    '" + localHash + "'");
+                        log(" Expected SHA-256:      '" + jarInfo.getSha256() + "'");
+                        if (jarInfo.getSha256().trim().equalsIgnoreCase(localHash)) {
+                            log(" Skipping core JAR (hash matches): " + localFile.getName());
                             localJars.add(localFile);
                             progress.updateProgressBar((double) cntNum/numOfJars);
                             continue;
@@ -221,16 +224,16 @@ public class DownloadJNLP {
                             log("🔄 Expected: " + jarInfo.getSha256());
                         }
                     } catch (Exception e) {
-                        log("❌ ERROR calculating local hash for " + localFile.getName() + ": " + e.getMessage());
+                        log(" ERROR calculating local hash for " + localFile.getName() + ": " + e.getMessage());
                     }
                 } else {
-                    log("🔍 Core JAR info - exists: " + localFile.exists() + ", getSha256: '" + jarInfo.getSha256() + "'");
+                    log(" Core JAR info - exists: " + localFile.exists() + ", getSha256: '" + jarInfo.getSha256() + "'");
                 }
             }
 
             // Download if file doesn't exist or hashes don't match
             if (!downloadFile(correctedJarUrl, localFile, jarInfo.getSha256())) {
-                log("❌ WARNING: Failed to download core JAR: " + correctedJarUrl);
+                log(" WARNING: Failed to download core JAR: " + correctedJarUrl);
                 continue;
             }
 
@@ -239,7 +242,7 @@ public class DownloadJNLP {
             progress.updateProgressBar((double) cntNum/numOfJars);
         }
 
-        // ✅ Download Extension JARs
+        //  Download Extension JARs
         for (ExtensionInfo jar : listExtensions) {
             checkCancelled("extension JAR download");
 
@@ -255,7 +258,7 @@ public class DownloadJNLP {
             cntNum += 1;
 
             if (mapJars == null) {
-                log("❌ WARNING: Failed to download Extension JAR: mapJars is null - extensionName: " + extensionName);
+                log(" WARNING: Failed to download Extension JAR: mapJars is null - extensionName: " + extensionName);
                 continue;
             }
 
@@ -282,24 +285,24 @@ public class DownloadJNLP {
                     if (localFile.exists() && expectedSha256 != null && !expectedSha256.trim().isEmpty()) {
                         try {
                             String localHash = calculateSha256(localFile);
-                            log("🔍 Extension Local SHA-256:    '" + localHash + "'");
-                            log("🔍 Extension Expected SHA-256:  '" + expectedSha256 + "'");
-                            if (expectedSha256.trim().equals(localHash)) {
-                                log("✅ Skipping extension JAR (hash matches): " + localFile.getName());
+                            log(" Extension Local SHA-256:    '" + localHash + "'");
+                            log(" Extension Expected SHA-256:  '" + expectedSha256 + "'");
+                            if (expectedSha256.trim().equalsIgnoreCase(localHash)) {
+                                log(" Skipping extension JAR (hash matches): " + localFile.getName());
                                 localJars.add(localFile);
                                 continue;
                             } else {
                                 log("🔄 Hash differs, re-downloading extension JAR: " + localFile.getName());
                             }
                         } catch (Exception e) {
-                            log("❌ ERROR calculating local hash for " + localFile.getName() + ": " + e.getMessage());
+                            log(" ERROR calculating local hash for " + localFile.getName() + ": " + e.getMessage());
                         }
                     }
                 }
 
                 // Download if file doesn't exist or hashes don't match
                 if (!downloadFile(jarUrl, localFile, expectedSha256)) {
-                    log("❌ WARNING: Missing extension JAR: " + jarUrl);
+                    log(" WARNING: Missing extension JAR: " + jarUrl);
                     continue;
                 }
                 localJars.add(localFile);
@@ -321,7 +324,7 @@ public class DownloadJNLP {
             if (!clearCacheJars && destination.exists() && expectedSha256 != null) {
                 String actualSha256 = calculateSha256(destination);
                 if (expectedSha256.trim().equalsIgnoreCase(actualSha256)) {
-                    log("✅ Skipping already downloaded file: " + destination.getName());
+                    log(" Skipping already downloaded file: " + destination.getName());
                     return true;
                 }
             }
@@ -335,28 +338,30 @@ public class DownloadJNLP {
                 while ((bytesRead = in.read(buffer)) != -1) {
                     out.write(buffer, 0, bytesRead);
                 }
+            } finally {
+                currentConnection = null;
             }
 
             if (expectedSha256 != null && !expectedSha256.trim().isEmpty()) {
                 String actualSha256 = calculateSha256(destination);
-                log("🔍 Expected SHA-256: '" + expectedSha256.trim() + "'");
-                log("🔍 Actual SHA-256:   '" + actualSha256 + "'");
-                log("🔍 Hash lengths - Expected: " + expectedSha256.length() + ", Actual: " + actualSha256.length());
+                log(" Expected SHA-256: '" + expectedSha256.trim() + "'");
+                log(" Actual SHA-256:   '" + actualSha256 + "'");
+                log(" Hash lengths - Expected: " + expectedSha256.length() + ", Actual: " + actualSha256.length());
 
-                if (!expectedSha256.trim().equals(actualSha256)) {
-                    log("❌ ERROR: SHA-256 mismatch for " + destination.getName());
-                    log("❌ Expected: " + expectedSha256.trim());
-                    log("❌ Actual:   " + actualSha256);
+                if (!expectedSha256.trim().equalsIgnoreCase(actualSha256)) {
+                    log(" ERROR: SHA-256 mismatch for " + destination.getName());
+                    log(" Expected: " + expectedSha256.trim());
+                    log(" Actual:   " + actualSha256);
                     destination.delete();
                     return false;
                 }
-                log("✅ SHA-256 verification passed for " + destination.getName());
+                log(" SHA-256 verification passed for " + destination.getName());
             }
 
-            log("✅ Saved: " + destination.getAbsolutePath());
+            log(" Saved: " + destination.getAbsolutePath());
             return true;
         } catch (Exception e) {
-            log("❌ ERROR downloading file: " + urlStr + " - " + e.getMessage());
+            log(" ERROR downloading file: " + urlStr + " - " + e.getMessage());
             return false;
         }
     }
@@ -384,7 +389,7 @@ public class DownloadJNLP {
 
     private void checkCancelled(String context) throws InterruptedException {
         if (Thread.interrupted() || cancelled) {
-            log("🚫 Cancelled at: " + context);
+            log(" Cancelled at: " + context);
             throw new InterruptedException("Download cancelled");
         }
     }

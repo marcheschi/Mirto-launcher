@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +25,7 @@ public class ConnectionStore {
 
     public static final String CONNECTIONS_FILE_NAME = "connections.json";
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final DateTimeFormatter BACKUP_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    private static final DateTimeFormatter BACKUP_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS");
 
     private final File dataFolder;
     private final Path keyFile;
@@ -86,7 +87,7 @@ public class ConnectionStore {
         // Keep one timestamped backup of the previously saved state (best effort).
         if (Files.exists(target)) {
             Path backup = target.resolveSibling(
-                    "connections-" + LocalDateTime.now().format(BACKUP_STAMP) + ".bak.json");
+                    "connections-" + LocalDateTime.ofInstant(Instant.now(), java.time.ZoneId.systemDefault()).format(BACKUP_STAMP) + ".bak.json");
             try {
                 Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
             } catch (IOException ignored) {

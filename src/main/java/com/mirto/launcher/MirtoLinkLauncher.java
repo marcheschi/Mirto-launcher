@@ -73,6 +73,9 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.Optional;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 
 public class MirtoLinkLauncher extends Application {
     private static final boolean DEVELOP = false;
@@ -258,6 +261,21 @@ public class MirtoLinkLauncher extends Application {
         });
 
         railHeader.getChildren().addAll(railLogo, titleBox, themeToggleButton);
+
+        // Sort dropdown: controls the order of groups and connections in the tree.
+        Label sortLabel = new Label("Sort:");
+        sortLabel.getStyleClass().add("rail-section-label");
+        sortLabel.setPadding(new Insets(4, 16, 0, 16));
+        ComboBox<String> sortCombo = new ComboBox<>(FXCollections.observableArrayList(
+                "Name", "Group", "Last launched", "Added date"
+        ));
+        sortCombo.getSelectionModel().select(0);
+        sortCombo.setOnAction(e -> updateTreeViewWithSort(sortCombo.getSelectionModel().getSelectedItem()));
+        sortCombo.setPrefWidth(100);
+        sortCombo.setPromptText("Sort by");
+        HBox sortWrap = new HBox(sortLabel, sortCombo);
+        sortWrap.setPadding(new Insets(0, 16, 4, 16));
+        rail.getChildren().add(sortWrap);
 
         Label connectionsLabel = new Label("CONNECTIONS");
         connectionsLabel.getStyleClass().add("rail-section-label");
@@ -448,6 +466,10 @@ public class MirtoLinkLauncher extends Application {
                 if (!exists) {
                     conn.setName(newName);
                     saveConnections();
+                } else {
+                    // Name clash: revert the cell text and inform the user.
+                    event.getTreeCell().setText(conn.getName());
+                    showAlert("A connection with that name already exists.");
                 }
                 updateTreeView();
             }
@@ -905,6 +927,16 @@ public class MirtoLinkLauncher extends Application {
         // (possibly empty) selection — otherwise they stay at their defaults.
         refreshActionStates();
 
+        // Keyboard shortcuts
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN),
+                e -> { if (!isLaunching) saveCurrentConnection(); });
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN),
+                e -> createNewConnection());
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.DELETE, KeyCombination.CONTROL_DOWN),
+                e -> deleteCurrentConnection());
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.ENTER, KeyCombination.CONTROL_DOWN),
+                e -> { if (!isLaunching) launch(); });
+
         newButton.requestFocus();
 
         // Check write permissions to "data" and "cache" folders after showing the application
@@ -1232,7 +1264,7 @@ public class MirtoLinkLauncher extends Application {
         }
         root.getChildren().clear();
 
-        Map<String, TreeItem<Connection>> groupItems = new HashMap<>();
+        Map<String, TreeItem<Connection>> groupItems = new TreeMap<>();
         String filterLower = filter.toLowerCase().trim();
 
         for (Connection conn : connectionsList) {
@@ -1256,6 +1288,46 @@ public class MirtoLinkLauncher extends Application {
                     root.getChildren().add(groupItem);
                 }
             }
+        }
+    }
+
+    /** Sorts the connections tree by the given criterion. */
+    private void updateTreeViewWithSort(String sortBy) {
+        TreeItem<Connection> root = connectionsTreeView.getRoot();
+        if (root == null) return;
+        root.getChildren().clear();
+
+        // Group then sort
+        Map<String, List<Connection>> grouped = new TreeMap<>();
+        for (Connection conn : connectionsList) {
+            String groupName = StringUtils.isBlank(conn.getGroup()) ? "Ungrouped" : conn.getGroup();
+            grouped.computeIfAbsent(groupName, k -> new ArrayList<>()).add(conn);
+        }
+
+        for (List<Connection> conns : grouped.values()) {
+            if ("Name".equals(sortBy)) {
+                conns.sort(Comparator.comparing(c -> StringUtils.defaultString(c.getName())));
+            } else if ("Last launched".equals(sortBy)) {
+                conns.sort((a, b) -> Long.compare(
+                        java.util.Optional.ofNullable(b.getLastLaunchedMs()).orElse(0),
+                        java.util.Optional.ofNullable(a.getLastLaunchedMs()).orElse(0)));
+            } else if ("Added date".equals(sortBy)) {
+                conns.sort(Comparator.comparing(Connection::getId));
+            } else { // Group or default
+                conns.sort(Comparator.comparing(c -> StringUtils.defaultString(c.getName())));
+            }
+        }
+
+        // Now build the tree in sorted group order
+        for (Map.Entry<String, List<Connection>> entry : grouped.entrySet()) {
+            String groupName = entry.getKey();
+            TreeItem<Connection> groupItem = new TreeItem<>(new Connection(null, "", null, null, null, null, null,
+                    null, false, false, null, false, null, false, null, null, groupName, null, false, false, null, false, null));
+            groupItem.setExpanded(true);
+            for (Connection conn : entry.getValue()) {
+                groupItem.getChildren().add(new TreeItem<>(conn));
+            }
+            root.getChildren().add(groupItem);
         }
     }
 
@@ -1495,8 +1567,19 @@ public class MirtoLinkLauncher extends Application {
             }
 
             @Override
-            public void launched() {
+            public void launched(Connection launchedConn) {
                 Platform.runLater(() -> {
+                    // Update the last-launched timestamp on the connection in our list
+                    // and persist it so the "sort by last launched" feature works.
+                    if (launchedConn != null && launchedConn.getName() != null && !launchedConn.getName().isEmpty()) {
+                        for (Connection c : connectionsList) {
+                            if (StringUtils.equals(c.getName(), launchedConn.getName())) {
+                                c.setLastLaunchedMs(launchedConn.getLastLaunchedMs());
+                                break;
+                            }
+                        }
+                        saveConnections(); // persist the timestamp
+                    }
                     if (closeWindowCheckBox.isSelected()) {
                         primaryStage.close();
                     } else {
@@ -1636,13 +1719,31 @@ public class MirtoLinkLauncher extends Application {
                         newName = baseName + " (Imported " + counter++ + ")";
                     }
                     conn.setName(newName);
-                    // Import icons
+                    // Import icons with conflict resolution: if the icon file already
+                    // exists in the local icons folder, append a counter to avoid
+                    // clobbering an existing icon that a different connection may reference.
                     if (conn.getIcon() != null && !conn.getIcon().trim().isEmpty()) {
                         File sourceIcon = new File(new File(file.getParentFile(), "icons"), conn.getIcon());
                         if (sourceIcon.exists()) {
                             File iconFolder = new File(dataFolder, "icons");
                             iconFolder.mkdirs();
                             File targetIcon = new File(iconFolder, conn.getIcon());
+                            if (targetIcon.exists()) {
+                                // Conflict: pick a unique name by appending a counter.
+                                String baseName = conn.getIcon();
+                                int dot = baseName.lastIndexOf('.');
+                                String namePart = dot > 0 ? baseName.substring(0, dot) : baseName;
+                                String extPart = dot > 0 ? baseName.substring(dot) : "";
+                                int counter = 1;
+                                File conflictTarget;
+                                do {
+                                    String newName = namePart + "_imported" + counter + extPart;
+                                    conflictTarget = new File(iconFolder, newName);
+                                    counter++;
+                                } while (conflictTarget.exists());
+                                targetIcon = conflictTarget;
+                                conn.setIcon(targetIcon.getName());
+                            }
                             Files.copy(sourceIcon.toPath(), targetIcon.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         } else {
                             conn.setIcon("");
@@ -2265,7 +2366,11 @@ public class MirtoLinkLauncher extends Application {
         LOG.debug(message);
     }
     public static void main(String[] args) {
-        SSLBypass.disableSSLVerification();
+        // SSL verification is now per-connection via ConnectionHealth and DownloadJNLP.
+        // The global bypass (SSLBypass.disableSSLVerification()) was removed: it disabled
+        // verification for ALL HTTPS connections regardless of the Trust self-signed
+        // checkbox. Each HTTPS operation now uses the JVM default (proper verification)
+        // or a per-connection trust-all factory when the user opts in.
         // Keep a reference to the running application so the shutdown hook can
         // terminate any SSH tunnel process spawned by the launcher (Java 8 API only).
         RUNTIME_APP_HOLDER = new MirtoLinkLauncher[1];

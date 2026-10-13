@@ -27,10 +27,10 @@ public class ProcessLauncher {
     }
     
     public void launch(JavaConfig javaConfig, Credential credential, CodeBase codeBase, boolean isShowConsole, String iconPath, String connectionName) throws Exception {
-        log("🚀 ProcessLauncher.launch() started");
-        log("📋 Parameters - iconPath: '" + iconPath + "', connectionName: '" + connectionName + "', isShowConsole: " + isShowConsole);
+        log("ProcessLauncher.launch() started");
+        log("Parameters - iconPath: '" + iconPath + "', connectionName: '" + connectionName + "', isShowConsole: " + isShowConsole);
         
-        log("🖥️ Operating System Detection:");
+        log("Operating System Detection:");
         log("   - IS_OS_MAC: " + SystemUtils.IS_OS_MAC);
         log("   - IS_OS_WINDOWS: " + SystemUtils.IS_OS_WINDOWS);
         log("   - IS_OS_LINUX: " + SystemUtils.IS_OS_LINUX);
@@ -43,10 +43,10 @@ public class ProcessLauncher {
         if(StringUtils.isNotBlank(javaConfig.getJvmOptions()))
             command.addAll(javaConfig.getJvmOptionsList());
 
-        log("🔧 Building platform-specific commands...");
+        log("Building platform-specific commands...");
 
         if (SystemUtils.IS_OS_MAC){
-            log("🍎 Configuring macOS dock settings...");
+            log("Configuring macOS dock settings...");
             // Use dynamic icon path if provided, otherwise fall back to default
             String dockIcon = (iconPath != null && !iconPath.trim().isEmpty()) ? iconPath : "icon.png";
             log("   - Dock icon path: '" + dockIcon + "'");
@@ -106,8 +106,8 @@ public class ProcessLauncher {
             log("   - Java version is not Java 17, skipping module options");
         }
 
-        log("📦 Adding application classpath and main class...");
-        log("📝 Classpath contains " + codeBase.getClasspath().size() + " JAR files:");
+        log("Adding application classpath and main class...");
+        log("Classpath contains " + codeBase.getClasspath().size() + " JAR files:");
         for (int i = 0; i < codeBase.getClasspath().size(); i++) {
             String jarPath = codeBase.getClasspath().get(i);
             File jarFile = new File(jarPath);
@@ -115,7 +115,7 @@ public class ProcessLauncher {
         }
         command.add("-cp");
         String fullClasspath = String.join(File.pathSeparator, codeBase.getClasspath());
-        log("📝 Full classpath: " + fullClasspath);
+        log("Full classpath: " + fullClasspath);
         command.add(fullClasspath);
         
         // Use the standard main class for all platforms
@@ -133,13 +133,13 @@ public class ProcessLauncher {
             command.add(credential.getPassword());
         }
 
-        log("🔍 FINAL COMMAND ANALYSIS:");
-        log("📏 Total command parts: " + command.size());
+        log("FINAL COMMAND ANALYSIS:");
+        log("Total command parts: " + command.size());
         List<String> maskedCommand = maskCredentials(command, credential);
         for (int i = 0; i < maskedCommand.size(); i++) {
             String part = maskedCommand.get(i);
             if (part.startsWith("-Xdock:") || part.startsWith("-Dapp.") || part.startsWith("-Dapple.awt.") || part.startsWith("-Dcom.apple.")) {
-                log("   [" + i + "] 🎯 " + part + " ← IMPORTANT FOR DOCK/TASKBAR");
+                log("   [" + i + "] " + part + " ← IMPORTANT FOR DOCK/TASKBAR");
             } else {
                 log("   [" + i + "] " + part);
             }
@@ -148,14 +148,14 @@ public class ProcessLauncher {
         ProcessBuilder targetPb = new ProcessBuilder(command);
         targetPb.redirectErrorStream(true);
 
-        log("🚀 Starting process...");
+        log("Starting process...");
         // Debug: print the command being executed, with credentials masked — they must
         // never reach stdout (shell history, consoles, redirected logs) in clear text.
         LOG.info("Executing command: {}", String.join(" ", maskCredentials(command, credential)));
 
         Process targetProcess;
         if(isShowConsole) {
-            log("🖥️ Starting with console enabled...");
+            log("Starting with console enabled...");
             
             // Build console command with same platform-specific icon settings as main process
             List<String> consoleCommand = new ArrayList<>();
@@ -201,20 +201,20 @@ public class ProcessLauncher {
 
             // Verify consoleProcess launched
             if (!consoleProcess.isAlive()) {
-                log("❌ Console process failed to start");
+                log("Console process failed to start");
                 throw new IOException("Console process failed to start");
             } else {
-                log("✅ Console process started successfully");
+                log("Console process started successfully");
             }
 
             // Start Target Process
             targetProcess = targetPb.start();
             // Verify targetProcess launched
             if (!targetProcess.isAlive()) {
-                log("❌ Target process failed to start");
+                log("Target process failed to start");
                 throw new IOException("Target process failed to start");
             } else {
-                log("✅ Target process started successfully with PID: " + getProcessId(targetProcess));
+                log("Target process started successfully with PID: " + getProcessId(targetProcess));
             }
 
             // Pipe Target Process output to Console Process input in real-time
@@ -229,25 +229,25 @@ public class ProcessLauncher {
                     }
                     consoleInput.flush(); // Final flush
                 } catch (IOException e) {
-                    log("❌ Error in pipe thread: " + e.getMessage());
+                    log("Error in pipe thread: " + e.getMessage());
                 }
             });
             pipeThread.start();
         } else {
-            log("🖥️ Starting without console...");
+            log("Starting without console...");
             targetProcess = targetPb.start();
 
             // Verify targetProcess launched
             if (!targetProcess.isAlive()) {
-                log("❌ Target process failed to start");
+                log("Target process failed to start");
                 throw new IOException("Target process failed to start");
             } else {
-                log("✅ Target process started successfully with PID: " + getProcessId(targetProcess));
+                log("Target process started successfully with PID: " + getProcessId(targetProcess));
             }
         }
         
-        log("🎉 ProcessLauncher.launch() completed successfully!");
-        log("⏰ Check the dock/taskbar now to see if the tooltip shows 'BridgeLink Administrator'");
+        log("ProcessLauncher.launch() completed successfully!");
+        log("Check the dock/taskbar now to see if the tooltip shows 'BridgeLink Administrator'");
     }
     
     /**
